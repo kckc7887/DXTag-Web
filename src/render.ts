@@ -3,7 +3,7 @@
 import {AXIS_ORDER, type AxisReport, type ChartAnalysis} from './analyze';
 import {AXIS_COLOR, createRadar} from './radar';
 
-const SHARE_COLORS = ['#38bdf8', '#a78bfa', '#fbbf24', '#34d399'];
+const SHARE_COLORS = ['#728b5c', '#b48e56', '#858699', '#75928b'];
 
 const esc = (value: unknown) => String(value)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -55,25 +55,25 @@ function factorRows(report: AxisReport): string {
     </tr>`).join('');
   if (!baseline && !factors) return '';
   return `
-    <table class="factors">
+    <div class="table-scroll" role="region" tabindex="0" aria-label="得分构成，可横向滚动"><table class="factors">
       <caption>得分构成（按引擎的运算顺序逐项归因）</caption>
       <thead><tr><th>项目</th><th>原值</th><th>归一</th><th>权重</th><th>本轴贡献</th></tr></thead>
       <tbody>${baseline}${factors}</tbody>
-    </table>`;
+    </table></div>`;
 }
 
 function axisCard(report: AxisReport, index: number): string {
   const color = AXIS_COLOR[report.axis];
   return `
-    <article class="panel axis-card" id="axis-${index}" data-axis="${esc(report.axis)}" style="--accent:${color}">
-      <header class="axis-head">
-        <span class="axis-badge" style="background:${color}">${esc(report.axis)}</span>
+    <details class="panel axis-card" id="axis-${index}" data-axis="${esc(report.axis)}" style="--accent:${color}">
+      <summary class="axis-head">
+        <span class="axis-badge" style="background:${color}">0${index + 1}</span>
         <div>
-          <h3>${esc(report.axis)} ${report.score.toFixed(1)} / 10</h3>
+          <h3>${esc(report.axis)}</h3>
           <p>${esc(report.baselineLabel)}</p>
         </div>
         <div class="axis-score">${report.score.toFixed(1)}<small> /10</small></div>
-      </header>
+      </summary>
       <div class="axis-body">
         <div class="formula">${esc(report.formula)}</div>
         <p class="reason">${esc(report.reason)}</p>
@@ -83,7 +83,7 @@ function axisCard(report: AxisReport, index: number): string {
             `<div><span>${esc(item.label)}</span><b>${esc(item.value)}</b></div>`).join('')}
         </div>
       </div>
-    </article>`;
+    </details>`;
 }
 
 function hotspot(title: string, hint: string, items: string[]): string {
@@ -150,7 +150,7 @@ export function renderChartView(analysis: ChartAnalysis, options: ChartViewOptio
   const tabs = options.slots.map(slot => {
     const scored = options.charts.some(chart => chart.slot === slot.slot);
     return `<button type="button" class="tab${slot.slot === options.activeSlot ? ' is-active' : ''}"
-      data-slot="${slot.slot}"${scored ? '' : ' disabled title="该难度计算失败，见上方错误信息"'}>${esc(slot.name)}</button>`;
+      aria-pressed="${slot.slot === options.activeSlot}" data-slot="${slot.slot}"${scored ? '' : ' disabled title="该难度计算失败，见上方错误信息"'}>${esc(slot.name)}</button>`;
   }).join('');
 
   const subtitle = [
@@ -172,25 +172,30 @@ export function renderChartView(analysis: ChartAnalysis, options: ChartViewOptio
   return `
     <section class="panel chart-head">
       <div>
+        <p class="report-label">ANALYSIS REPORT / 谱面报告</p>
         <h2 class="chart-title">${esc(analysis.title || '（未命名谱面）')}</h2>
         <p class="chart-sub"><span><i>难度</i>${esc(analysis.difficulty)}</span>${subtitle}</p>
       </div>
-      <div class="tabs" role="tablist" aria-label="选择难度">${tabs}</div>
+      <div class="report-toolbar"><div class="tabs" role="group" aria-label="选择难度">${tabs}</div>
       <div class="head-actions">
         <button type="button" class="ghost-button" id="copy-json">复制 CLI JSON</button>
-        <button type="button" class="ghost-button" id="reset-view">换一份谱面</button>
+        <button type="button" class="ghost-button" id="reset-view">换一份谱面 ↗</button>
+      </div></div>
+      <div class="json-fallback" id="json-fallback" hidden>
+        <label for="json-output">浏览器不允许自动复制。下方为全部已解析难度的 CLI JSON，可手动选择复制。</label>
+        <textarea id="json-output" readonly spellcheck="false"></textarea>
       </div>
     </section>
 
     <section class="overview">
       <div class="panel radar-panel" id="radar-host"></div>
       <div class="panel score-panel">
-        <h2>五维得分</h2>
+        <h2>谱面的五种侧面</h2><p class="score-hint">点击维度，查看评分依据</p>
         ${AXIS_ORDER.map((axis, index) => `
           <button type="button" class="score-row" data-jump="${index}" style="--accent:${AXIS_COLOR[axis]}">
             <span class="score-name">${axis}</span>
             <span class="score-bar"><i style="width:${(analysis.scores[axis] / 10 * 100).toFixed(1)}%"></i></span>
-            <span class="score-num">${analysis.scores[axis].toFixed(1)}</span>
+            <span class="score-num">${analysis.scores[axis].toFixed(1)}</span><span class="score-arrow" aria-hidden="true">↗</span>
           </button>`).join('')}
         ${summary}
       </div>
@@ -199,14 +204,14 @@ export function renderChartView(analysis: ChartAnalysis, options: ChartViewOptio
     ${statsStrip(analysis)}
 
     <section class="analysis">
-      <h2 class="section-title">详细分析 · 每一分的来源</h2>
+      <h2 class="section-title">评分依据<span class="section-description">展开维度，查看计算拆分</span></h2>
       ${analysis.axes.map((report, index) => axisCard(report, index)).join('')}
     </section>
 
     ${hotspots(analysis)}
 
-    <section class="panel raw-panel">
-      <h2 class="section-title">引擎原始观察量与版本</h2>
+    <details class="panel raw-panel">
+      <summary class="section-title">引擎原始观察量与版本</summary>
       <div class="raw-grid">
         ${analysis.features.map(feature =>
           `<div class="raw-item"><span>${esc(feature.label)}</span><b>${feature.value.toFixed(4)}</b></div>`).join('')}
@@ -215,13 +220,13 @@ export function renderChartView(analysis: ChartAnalysis, options: ChartViewOptio
         算法 ${esc(analysis.versions.algorithm)} · 标尺 ${esc(analysis.versions.scale)}<br />
         星星 ${esc(analysis.versions.star)} · 节奏 ${esc(analysis.versions.rhythm)} · 输入 ${esc(analysis.versions.input)} · 融合 ${esc(analysis.versions.radar)}
       </p>
-    </section>`;
+    </details>`;
 }
 
 export function mountRadar(host: HTMLElement, analysis: ChartAnalysis, onSelectAxis: (axis: string) => void): void {
   host.replaceChildren();
   const caption = document.createElement('p');
   caption.className = 'section-title';
-  caption.textContent = '五维雷达图（外环 10.0 分）';
+  caption.textContent = '五维轮廓 / 外环 10.0';
   host.append(caption, createRadar(analysis, axis => onSelectAxis(axis)));
 }

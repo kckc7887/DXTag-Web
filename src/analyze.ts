@@ -360,7 +360,7 @@ export function analyzeChart(text: string, difficulty: Difficulty): ChartAnalysi
       evidence: [
         {label: '基础键盘爆发 KB', value: fmt(KB)},
         {label: '基础星星爆发 SB', value: fmt(SB)},
-        {label: '两秒窗口峰值', value: `${stat.peak} 个/秒（1 秒窗口）`},
+        {label: '一秒窗口峰值', value: `${stat.peak} 个/秒（1 秒窗口）`},
         {label: '最大突增', value: bursts[0] ? `${beats(bursts[0].startBeat, bursts[0].endBeat)}（+${fmt(bursts[0].riseRaw)}）` : '无'},
       ],
     },

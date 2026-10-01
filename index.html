@@ -1,97 +1,52 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>DXTag · 五维谱面评分</title>
-<meta name="description" content="上传 maidata.txt，用雷达图直观查看键盘、星星、技巧、体力、爆发五维评分与每一分的来源。" />
-<meta name="color-scheme" content="dark" />
-<link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-<link rel="stylesheet" href="./src/style.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DXTag · 谱面分析</title>
+  <meta name="description" content="在浏览器本地分析 Simai 谱面。从键盘、星星、技巧、体力、爆发五个维度，查看评分、计算依据与难点片段。" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#f5f4ef" />
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="./src/style.css" />
 </head>
 <body>
-<div class="aurora" aria-hidden="true"></div>
-
-<header class="topbar">
-  <a class="brand" href="./">
-    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-      <path d="M16 2 30 16 16 30 2 16Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-      <path d="M16 9 23 16 16 23 9 16Z" fill="currentColor" opacity=".85"/>
-    </svg>
-    <span class="brand-text"><b>DXTag</b><i>五维谱面评分</i></span>
-  </a>
-  <nav class="topbar-links">
-    <a href="https://github.com/kckc7887/DXTag" target="_blank" rel="noreferrer">引擎仓库</a>
-    <a href="https://github.com/kckc7887/DXTag/blob/main/docs/ALGORITHM.md" target="_blank" rel="noreferrer">算法文档</a>
-    <a href="https://github.com/kckc7887/DXTag-Web" target="_blank" rel="noreferrer">本页源码</a>
+<a class="skip-link" href="#input-panel">跳到谱面输入</a>
+<aside class="sidebar">
+  <a class="brand" href="./" aria-label="DXTag 首页"><span class="brand-mark" aria-hidden="true">dx<span>↗</span></span><span>DXTag<small>CHART ANALYSIS</small></span></a>
+  <div class="sidebar-section">工作空间</div>
+  <nav class="workspace-nav" aria-label="工作空间">
+    <a href="#input-panel" class="nav-active"><span aria-hidden="true">◈</span> 谱面分析 <span class="nav-arrow" aria-hidden="true">↗</span></a>
+    <a href="#sample-section"><span aria-hidden="true">⊞</span> 示例谱面</a>
+    <a href="https://github.com/kckc7887/DXTag/blob/main/docs/ALGORITHM.md" target="_blank" rel="noreferrer"><span aria-hidden="true">≡</span> 算法文档 <span class="nav-arrow" aria-hidden="true">↗</span></a>
   </nav>
-</header>
-
-<main>
-  <section class="hero">
-    <p class="eyebrow">maidata → 五维雷达</p>
-    <h1>一张谱面难在哪，<br /><span class="grad">五个维度一起看</span></h1>
-    <p class="lede">
-      上传一份 <code>maidata.txt</code>，DXTag 会在浏览器里直接解析 Simai 谱面，
-      给出 <b>键盘</b>、<b>星星</b>、<b>技巧</b>、<b>体力</b>、<b>爆发</b> 的 0.0–10.0 评分，
-      并逐项列出每一分是怎么来的。<br />
-      评分完全由引擎在你本机计算，文件不会上传到任何服务器。
-    </p>
-    <div class="sample-row">
-      <span class="sample-label">没有谱面？试试示例：</span>
-      <div class="sample-buttons" id="sample-list"></div>
-    </div>
-  </section>
-
-  <section class="input-panel" id="input-panel">
-    <div class="drop-zone" id="drop-zone" tabindex="0" role="button"
-         aria-label="选择或拖入 maidata 文件">
-      <svg viewBox="0 0 24 24" aria-hidden="true" class="drop-icon">
-        <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.7"
-              stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15" fill="none"
-              stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-      </svg>
-      <p class="drop-title">拖入 <code>maidata.txt</code>，或点击选择文件</p>
-      <p class="drop-hint">支持 UTF-8 与带 BOM 的 UTF-16 LE／BE · 需要 &amp;inote_2 至 &amp;inote_6</p>
-      <input type="file" id="file-input" accept=".txt,text/plain" hidden />
-    </div>
-    <div class="input-actions">
-      <button type="button" class="ghost-button" id="paste-toggle" aria-expanded="false">粘贴文本</button>
-      <span class="input-note">或直接把谱面内容贴进来</span>
-    </div>
-    <div class="paste-wrap" id="paste-wrap" hidden>
-      <textarea id="paste-area" spellcheck="false" placeholder="&title=...&#10;&inote_5=(150){16}1,2,3,4,..."></textarea>
-      <div class="paste-actions">
-        <button type="button" class="primary-button" id="paste-run">解析这段谱面</button>
-        <button type="button" class="ghost-button" id="paste-clear">清空</button>
+  <div class="sidebar-bottom"><div class="local-badge"><i></i> 本地计算 · 文件不上传</div><p>Simai 谱面<br />五维评分与计算依据</p><a href="https://github.com/kckc7887/DXTag-Web" target="_blank" rel="noreferrer">GitHub 源码 <span aria-hidden="true">↗</span></a></div>
+</aside>
+<div class="page-shell">
+  <header class="topbar"><span>工作空间 <span class="breadcrumb-sep">/</span> <b>谱面分析</b></span><span class="topbar-note">BROWSER-LOCAL ANALYSIS</span></header>
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy"><p class="eyebrow"><span></span> DXTag / SIMAI</p><h1 id="hero-title">谱面分析<span>。</span></h1><p class="lede">导入 maidata.txt，查看键盘、星星、技巧、体力与爆发评分。</p><div class="hero-meta"><span>Simai / maidata.txt</span><span>0.0 — 10.0 五维评分</span></div></div>
+      <div class="hero-visual" aria-hidden="true"><div class="orbit-index">DX / 05</div><svg viewBox="0 0 360 300" class="orbit"><g class="orbit-grid"><circle cx="180" cy="148" r="107"/><circle cx="180" cy="148" r="76"/><circle cx="180" cy="148" r="44"/><path d="M180 28V268M60 148H300M95 63L265 233M95 233L265 63"/></g><path class="orbit-shape" d="M180 48 275 117 239 231 122 228 82 117Z"/><path class="orbit-inner" d="M180 92 233 130 213 193 147 193 127 130Z"/><g class="orbit-points"><circle cx="180" cy="48" r="4"/><circle cx="275" cy="117" r="4"/><circle cx="239" cy="231" r="4"/><circle cx="122" cy="228" r="4"/><circle cx="82" cy="117" r="4"/></g><g class="orbit-labels"><text x="180" y="21" text-anchor="middle">键盘</text><text x="308" y="118">星星</text><text x="258" y="261">技巧</text><text x="81" y="261">体力</text><text x="21" y="118">爆发</text></g></svg><span class="visual-caption">五维结构示意 · 非评分结果</span></div>
+    </section>
+    <section class="input-panel" id="input-panel" aria-labelledby="input-title">
+      <div class="section-heading"><div><span class="section-number">01</span><h2 id="input-title">导入谱面</h2></div><span class="section-aside">你的文件，始终留在浏览器里</span></div>
+      <div class="drop-zone" id="drop-zone" tabindex="0" role="button" aria-label="选择或拖入 maidata.txt 文件">
+        <div class="file-icon" aria-hidden="true"><svg viewBox="0 0 36 42"><path d="M7 2h15l9 9v28H7z"/><path d="M22 2v10h9M12 28l4-4-4-4m8 9h6"/></svg><span>TXT</span></div>
+        <h3 class="drop-title">将 maidata.txt 拖到这里</h3><p class="drop-hint">或点击此区域选择文件</p><span class="choose-file">选择谱面 <span aria-hidden="true">↗</span></span>
+        <p class="format-note">支持 UTF-8 / UTF-16 · 自动识别 BASIC 至 Re:MASTER</p>
+        <input type="file" id="file-input" accept=".txt,text/plain" hidden />
       </div>
-    </div>
-  </section>
-
-  <p class="status" id="status" role="status" aria-live="polite"></p>
-  <div class="error-list" id="errors" role="alert"></div>
-
-  <section class="results" id="results" hidden></section>
-</main>
-
-<footer class="footer">
-  <div class="footer-grid">
-    <div>
-      <p class="footer-title">DXTag · 五维谱面评分</p>
-      <p class="footer-copy">
-        评分为未标定的启发式工作量代理，不含判定或最优手序求解，也不代表官方定数。
-        算法细节见 <a href="https://github.com/kckc7887/DXTag/blob/main/docs/ALGORITHM.md" target="_blank" rel="noreferrer">技术文档</a>。
-      </p>
-    </div>
-    <div class="footer-meta">
-      <p>引擎 <a href="https://github.com/kckc7887/DXTag" target="_blank" rel="noreferrer">kckc7887/DXTag</a></p>
-      <p>版本 <span id="footer-versions">—</span></p>
-      <p>MIT License · Copyright (c) 2026 尘言</p>
-    </div>
-  </div>
-</footer>
-
+      <div class="input-actions"><span>只有谱面文本？</span><button type="button" class="text-button" id="paste-toggle" aria-expanded="false" aria-controls="paste-wrap">粘贴文本</button><span class="input-note">无需安装，无需登录</span></div>
+      <div class="paste-wrap" id="paste-wrap" hidden><label for="paste-area">maidata 谱面内容</label><textarea id="paste-area" spellcheck="false" placeholder="&title=谱面名称&#10;&inote_5=(150){16}1,2,3,4,..."></textarea><div class="paste-actions"><button type="button" class="primary-button" id="paste-run">开始分析 ↗</button><button type="button" class="ghost-button" id="paste-clear">清空文本</button></div></div>
+    </section>
+    <section class="sample-section" id="sample-section" aria-labelledby="sample-title"><div class="sample-heading"><h2 id="sample-title">先试一张示例</h2><p>用三种合成谱面，看看不同的难度轮廓</p></div><div class="sample-buttons" id="sample-list"></div></section>
+    <p class="status" id="status" role="status" aria-live="polite"></p><div class="error-list" id="errors" role="alert"></div>
+    <section class="results" id="results" aria-label="谱面分析结果" hidden></section>
+    <section class="reading-note"><span aria-hidden="true">ⓘ</span><p><b>评分是一种观察角度。</b> 这是未标定的启发式工作量估计，不等于官方定数，也不包含判定或最优手序求解。建议结合实际游玩体验阅读。</p></section>
+  </main>
+  <footer class="footer"><span>DXTag <span class="footer-dot">/</span> Simai 谱面分析</span><div><a href="https://github.com/kckc7887/DXTag" target="_blank" rel="noreferrer">引擎源码 ↗</a><span id="footer-versions">—</span><span>MIT · © 2026 尘言</span></div></footer>
+</div>
 <script type="module" src="./src/main.ts"></script>
 </body>
 </html>
