@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "DXTag 静态展示页：maidata 五维评分可视化",
+  "description": "DXTag 舞萌DX谱面分析：本地五维评分、计算依据与片段定位",
   "license": "MIT",
   "scripts": {
     "dev": "vite",

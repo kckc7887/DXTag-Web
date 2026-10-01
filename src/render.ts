@@ -216,15 +216,15 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
     <section class="profile" aria-label="五维评分">
       <div class="radar-panel">
         <div class="radar-topline">
-          <span>CHART SIGNATURE</span><span>05 AXES</span>
+          <span>YOUR CHART, IN FIVE AXES</span><span>DX / 05</span>
         </div>
         <div id="radar-host"></div>
-        <p class="radar-caption">五维负担轮廓 <span>外环 = 10.0</span></p>
+        <p class="radar-caption">五维负担轮廓 <span>网格外沿 = 10.0</span></p>
       </div>
       <div class="score-panel">
         <div class="score-heading">
           <h3>这张谱，难在哪里？</h3>
-          <span>选择维度查看依据</span>
+          <span>点选维度，展开依据 ↗</span>
         </div>
         ${AXIS_ORDER.map((axis, i) => `<button class="score-row" data-jump="${i}" style="--axis:${AXIS_COLOR[axis]}" type="button" aria-label="${axis} ${a.scores[axis].toFixed(1)}，查看评分依据"><span class="score-index">0${i + 1}</span><span class="score-info"><b>${axis}</b><small>${descriptions[i]}</small><span class="score-track"><i style="width:${a.scores[axis] * 10}%"></i></span></span><span class="score-value">${a.scores[axis].toFixed(1)}</span></button>`).join("")}
         <p class="score-footnote">各维度独立描述谱面特征，不合并为总分。</p>
@@ -233,7 +233,7 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
     ${stats(a)}
     <section class="explanations">
       <div class="section-heading">
-        <span>01 / DECONSTRUCT</span>
+        <span aria-label="第一部分">01</span>
         <h2>分数从哪里来</h2>
         <p>每个数值，都可以继续往下追。</p>
       </div>
@@ -241,7 +241,7 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
     </section>
     <section class="windows">
       <div class="section-heading">
-        <span>02 / LOCATE</span>
+        <span aria-label="第二部分">02</span>
         <h2>把难点定位到片段</h2>
         <p>
           仅标记筛选出的高负担窗口，不代表完整密度曲线。展开查看时间、拍点与原始量。
