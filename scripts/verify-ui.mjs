@@ -85,7 +85,7 @@ ctx.navigator.clipboard.writeText=writeText;
 $('paste-toggle').click();assert.equal($('paste-wrap').hidden,false);assert.equal($('paste-toggle').getAttribute('aria-expanded'),'true');assert.equal(dom.document.activeElement,$('paste-area'));
 $('paste-area').value='discard';$('paste-clear').click();assert.equal($('paste-area').value,'');assert.equal(dom.document.activeElement,$('paste-area'));
 $('paste-run').click();assert.equal($('results').hidden,true);assert.ok($('status').className.includes('error'));respond(first);assert.equal($('results').hidden,true,'empty paste invalidates older response');
-const input='&title=<img src=x onerror=alert(1)>\n&artist=<script>alert(2)</script>\n&inote_2=(120){4}1,2,3,4,E\n&inote_5=(150){8}1,2,3,4,5,6,7,8,E';
+const input='&title=<img src=x onerror=alert(1)> 中文\n&artist=<script>alert(2)</script>\n&des_5=" onmouseover="alert(3)\n&lv_5=<svg/onload=alert(4)>\n&inote_2=(120){4}1,2,3,4,E\n&inote_5=(150){8}1,2,3,4,5,6,7,8,E';
 $('paste-area').value=input;$('paste-run').click();assert.equal(last().text,input);const multi=respond();assertReport(multi);
 assert.equal($('results').querySelectorAll('script,img').length,0,'untrusted metadata never becomes executable HTML');
 assert.ok($('results').innerHTML.includes('&lt;img'));
@@ -120,7 +120,59 @@ $('paste-run').click();worker.onmessage({data:{id:last().id,ok:true,charts:[],sl
 // Partial success preserves scored results and disables the failed difficulty.
 samples()[0].click();const partial=ctx.qa.analyzeMaidata(last().text);worker.onmessage({data:{id:last().id,ok:true,...partial,slots:[...ctx.qa.listDifficulties(last().text),{slot:6,name:'Re:MASTER'}],errors:[{difficulty:'Re:MASTER',message:'unsupported chart'}]}});
 assert.equal($('results').hidden,false);assert.equal($('results').querySelector('.tab[data-slot="6"]').disabled,true);assert.ok($('errors').textContent.includes('unsupported chart'));
+// File-picker cancellation and an empty drop are not new input requests.
+showSample();
+const beforeCancel={id:last().id,html:$('results').innerHTML,status:$('status').textContent};
+$('file-input').files=[];$('file-input').dispatch('change');
+$('drop-zone').dispatch('drop',{dataTransfer:{files:[]}});
+$('drop-zone').dispatch('drop');
+assert.equal(last().id,beforeCancel.id);assert.equal($('results').innerHTML,beforeCancel.html);assert.equal($('status').textContent,beforeCancel.status);
+$('drop-zone').dispatch('dragover');assert.equal($('drop-zone').classList.contains('is-dragging'),true);$('drop-zone').dispatch('dragleave');assert.equal($('drop-zone').classList.contains('is-dragging'),false);
+// Preserve strict byte decoding and source-name escaping on the actual input path.
+const utf8=new TextEncoder().encode(input);
+const le=new Uint8Array(2+input.length*2);le.set([255,254]);
+for(let i=0;i<input.length;i++){le[2+i*2]=input.charCodeAt(i)&255;le[3+i*2]=input.charCodeAt(i)>>8;}
+const be=le.slice();for(let i=0;i<be.length;i+=2)[be[i],be[i+1]]=[be[i+1],be[i]];
+const utf8Bom=new Uint8Array(utf8.length+3);utf8Bom.set([239,187,191]);utf8Bom.set(utf8,3);
+for(const [encoding,bytes] of [['utf-8',utf8],['utf-8-bom',utf8Bom],['utf-16le-bom',le],['utf-16be-bom',be]]){
+ $('file-input').files=[{name:`<img src=x onerror=alert(5)> ${encoding}.txt`,arrayBuffer:async()=>bytes.buffer}];$('file-input').dispatch('change');await settle();
+ assert.equal(last().text,input,`${encoding} decodes to the same source`);const decoded=respond();assertReport(decoded);
+ assert.equal($('results').querySelectorAll('script,img').length,0,'file name and metadata remain inert');
+ assert.ok($('results').innerHTML.includes('&lt;img'));assert.ok($('results').innerHTML.includes('&lt;svg/onload'));
+}
+for(const bytes of [new Uint8Array([0xff,0xff]),new Uint8Array([0xff,0xfe,0x61]),new Uint8Array([0xfe,0xff,0x00])]){
+ const count=requests.length;
+ $('file-input').files=[{name:'bad-encoding.txt',arrayBuffer:async()=>bytes.buffer}];$('file-input').dispatch('change');await settle();
+ assert.equal(requests.length,count,'invalid bytes are rejected before worker submission');assert.equal($('results').hidden,true);assert.match($('status').textContent,/编码/);
+}
+// Every supported difficulty is available, with Re:MASTER selected and all five exported.
+const allSlots='&title=all ordinary difficulties\n'+[2,3,4,5,6].map(slot=>`&inote_${slot}=(120){4}1,2,3,4,E`).join('\n');
+$('paste-area').value=allSlots;$('paste-run').click();const everyDifficulty=respond();assertReport(everyDifficulty);
+assert.deepEqual(Array.from(everyDifficulty.charts,c=>c.slot),[2,3,4,5,6]);
+assert.equal($('results').querySelector('.tab[data-slot="6"]').getAttribute('aria-pressed'),'true');
+$('copy-json').click();await settle();assert.equal(JSON.parse(clipboard).length,5);
+for(const slot of [2,3,4,5,6]){$('results').querySelector(`.tab[data-slot="${slot}"]`).click();assert.equal($('results').querySelectorAll('.tab[aria-pressed="true"]').length,1);assert.equal(dom.document.activeElement,$('results').querySelector(`.tab[data-slot="${slot}"]`));}
+// Clipboard completion must not relabel controls or open a fallback after repaint/reset.
+let resolveCopy;ctx.navigator.clipboard.writeText=()=>new Promise(resolve=>resolveCopy=resolve);
+const obsoleteCopyButton=$('copy-json');obsoleteCopyButton.click();showSample();const replacementButton=$('copy-json');const replacementLabel=replacementButton.textContent;resolveCopy();await settle();
+assert.equal(replacementButton.textContent,replacementLabel,'late successful copy cannot label a new chart as copied');assert.equal(obsoleteCopyButton.textContent,replacementLabel,'detached copy button is not mutated');
+ctx.navigator.clipboard.writeText=()=>new Promise((_,reject)=>rejectCopy=reject);
+$('copy-json').click();$('results').querySelector('.tab[data-slot="5"]').click();rejectCopy(new Error('late denial after same-batch repaint'));await settle();assert.equal($('json-fallback').hidden,true);
+$('copy-json').click();$('reset-view').click();rejectCopy(new Error('late denial after reset'));await settle();assert.equal($('results').hidden,true);assert.equal($('empty-state').hidden,false);assert.equal($('paste-toggle').getAttribute('aria-expanded'),'false');
+ctx.navigator.clipboard.writeText=writeText;
+// A newer invalid input also wins over an earlier in-flight decode or worker failure.
+let lateRead;$('file-input').files=[{name:'old-pending.txt',arrayBuffer:()=>new Promise(resolve=>lateRead=resolve)}];$('file-input').dispatch('change');
+const beforeEmpty=requests.length;$('paste-area').value=' ';$('paste-run').click();const emptyStatus=$('status').textContent;lateRead(utf8.buffer);await settle();assert.equal(requests.length,beforeEmpty);assert.equal($('status').textContent,emptyStatus);
+showSample();const staleFailure=last();showSample();const currentMarkup=$('results').innerHTML;const currentStatus=$('status').textContent;
+worker.onmessage({data:{id:staleFailure.id,ok:false,message:'obsolete failure'}});assert.equal($('results').innerHTML,currentMarkup);assert.equal($('status').textContent,currentStatus);
+// Error strings are rendered as text, not interpreted as HTML.
+samples()[0].click();worker.onmessage({data:{id:last().id,ok:true,charts:[],slots:[],errors:[{difficulty:'<img src=x>',message:'<script>alert(6)</script>'}]}});
+assert.equal($('errors').querySelectorAll('img,script').length,0);assert.ok($('errors').textContent.includes('<script>'));
+// Toggle is reversible and reset restores the clean input state.
+showSample();if($('paste-wrap').hidden)$('paste-toggle').click();$('paste-toggle').click();assert.equal($('paste-wrap').hidden,true);assert.equal($('paste-toggle').getAttribute('aria-expanded'),'false');
+$('paste-toggle').click();$('paste-area').value='temporary';$('reset-view').click();assert.equal($('paste-area').value,'');assert.equal($('paste-wrap').hidden,true);assert.equal($('file-input').value,'');assert.equal($('errors').textContent,'');assert.equal($('status').textContent,'');assert.equal(dom.document.activeElement,$('drop-zone'));
+
 showSample();worker.onerror();assert.equal($('results').hidden,true);assert.ok($('status').className.includes('error'));respond();assert.equal($('results').hidden,true,'worker error invalidates response');
 $('file-input').files=[{name:'bad.txt',arrayBuffer:async()=>{throw new Error('file could not be read')}}];$('file-input').dispatch('change');await settle();assert.equal($('results').hidden,true);assert.ok($('status').textContent.includes('file could not be read'));
 const css=readFileSync('src/style.css','utf8');assert.match(css,/prefers-reduced-motion\s*:\s*reduce/);assert.match(css,/:focus-visible/);assert.match(css,/@media/);
-console.log('PASS source-backed simulated-DOM UI: all examples, file/drop/paste, five-axis SVG + evidence + four hotspot categories, multi-difficulty selection/focus, escaped metadata, JSON + denied clipboard fallback, reset, empty/error states, worker/file races, reduced-motion behavior and focus CSS. Not a real browser/render, layout, viewport, clipboard-permission or screen-reader test.');
+console.log('PASS source-backed simulated-DOM UI: all examples, file/drop/paste, five-axis SVG + evidence + four hotspot categories, all five difficulties/selection/focus, escaped metadata/source/errors, strict UTF-8/BOM UTF-16 file decoding, malformed byte rejection, cancelled/empty input, JSON + denied/absent clipboard fallback, reset, empty/error states, worker/file/clipboard races, reduced-motion behavior and focus CSS. Not a real browser/render, layout, viewport, clipboard-permission or screen-reader test.');

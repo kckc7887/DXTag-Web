@@ -30,6 +30,7 @@ jobs:
       # Gate: the page's scores, fusion values and attribution must equal the
       # engine's own output before anything is published.
       - run: npm run verify
+      - run: npm run verify:ui
       - run: npm run typecheck
       - run: npm run build
       - uses: actions/configure-pages@v6

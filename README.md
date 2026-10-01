@@ -4,6 +4,12 @@
 
 **[打开 DXTag-Web](https://kckc7887.github.io/DXTag-Web/)** · [评分引擎](https://github.com/kckc7887/DXTag) · [算法说明](https://github.com/kckc7887/DXTag/blob/cc99a103abcafd4a3b4310401deab2cc7bff5049/docs/ALGORITHM.md)
 
+## 页面与交互
+
+界面采用宣传片的浅青白底、彩色圆环、描边标题和轻量动效，直接呈现谱面输入与分析工具。雷达只绘制轮廓线；彩色圆环是装饰，**五边形网格外沿**才对应 10.0。结果以可点击的五维分数、可展开的计算依据和证据片段组织，不把五项相加成总分。
+
+页面适配桌面与窄屏；输入、难度切换、雷达轴、分数按钮和展开项均支持键盘。遵循系统的“减少动态效果”设置；动效只用于进入与结果呈现，不循环播放，也不改变计算。
+
 ## 使用
 
 1. 打开页面会自动分析一份明确标注的合成示例。选择或拖入自己的 `maidata.txt`，也可以直接粘贴文本；新结果会替换示例。
@@ -78,6 +84,17 @@ git submodule update --init --recursive
 - `verify:ui` 在 Node.js 中模拟 DOM 和 Worker，检查页面状态与事件逻辑；不验证真实浏览器的渲染、布局、辅助技术支持或剪贴板权限。
 - 修改界面后，还应在浏览器中检查文件导入、文本粘贴、难度切换、错误提示、复制及手动复制备用框，并检查窄屏布局和键盘操作。
 
+### 界面资源
+
+短标题使用随页面托管的 约 138 KB 的 Heavy 字体子集，正文及子集以外的用户曲名回退到系统字体。字体来自 Adobe Source Han Sans SC，遵循 SIL OFL 1.1，修改后字体名为 DXTag Display；许可证与说明位于 [`public/fonts/`](public/fonts/)。仅在更新静态标题文字时才需要重新生成子集：
+
+```sh
+python -m pip install fonttools brotli
+python scripts/subset-display-font.py /path/to/SourceHanSansSC-Heavy.otf
+```
+
+通常的 npm 构建不需要 Python。圆环、字形排版与动效使用本项目的 CSS / SVG 实现，无视频库或第三方动效运行时。页面不包含宣传片中的封面、音乐或真实谱面数据。
+
 ### 引擎与页面的分工
 
 `engine/` 是 [DXTag](https://github.com/kckc7887/DXTag) 的 Git submodule，由本仓库固定到一个提交。构建时直接打包引擎源码，无须先在 `engine/` 单独安装或构建。
@@ -116,4 +133,4 @@ npm run preview
 
 ## 许可
 
-页面项目的 `package.json` 标注为 MIT。评分引擎的完整许可与版权声明见 [MIT 许可](https://github.com/kckc7887/DXTag/blob/cc99a103abcafd4a3b4310401deab2cc7bff5049/LICENSE)。
+页面项目的 `package.json` 标注为 MIT。随附的字体为 SIL OFL 1.1 许可，见 [字体许可](public/fonts/OFL.txt)，不属于 MIT 许可范围。评分引擎的完整许可与版权声明见 [MIT 许可](https://github.com/kckc7887/DXTag/blob/cc99a103abcafd4a3b4310401deab2cc7bff5049/LICENSE)。
