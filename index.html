@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DXTag · 五维谱面评分</title>
+<meta name="description" content="上传 maidata.txt，用雷达图直观查看键盘、星星、技巧、体力、爆发五维评分与每一分的来源。" />
+<meta name="color-scheme" content="dark" />
+<link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="./src/style.css" />
+</head>
+<body>
+<div class="aurora" aria-hidden="true"></div>
+
+<header class="topbar">
+  <a class="brand" href="./">
+    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M16 2 30 16 16 30 2 16Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M16 9 23 16 16 23 9 16Z" fill="currentColor" opacity=".85"/>
+    </svg>
+    <span class="brand-text"><b>DXTag</b><i>五维谱面评分</i></span>
+  </a>
+  <nav class="topbar-links">
+    <a href="https://github.com/kckc7887/DXTag" target="_blank" rel="noreferrer">引擎仓库</a>
+    <a href="https://github.com/kckc7887/DXTag/blob/main/docs/ALGORITHM.md" target="_blank" rel="noreferrer">算法文档</a>
+    <a href="https://github.com/kckc7887/DXTag-Web" target="_blank" rel="noreferrer">本页源码</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <p class="eyebrow">maidata → 五维雷达</p>
+    <h1>一张谱面难在哪，<br /><span class="grad">五个维度一起看</span></h1>
+    <p class="lede">
+      上传一份 <code>maidata.txt</code>，DXTag 会在浏览器里直接解析 Simai 谱面，
+      给出 <b>键盘</b>、<b>星星</b>、<b>技巧</b>、<b>体力</b>、<b>爆发</b> 的 0.0–10.0 评分，
+      并逐项列出每一分是怎么来的。<br />
+      评分完全由引擎在你本机计算，文件不会上传到任何服务器。
+    </p>
+    <div class="sample-row">
+      <span class="sample-label">没有谱面？试试示例：</span>
+      <div class="sample-buttons" id="sample-list"></div>
+    </div>
+  </section>
+
+  <section class="input-panel" id="input-panel">
+    <div class="drop-zone" id="drop-zone" tabindex="0" role="button"
+         aria-label="选择或拖入 maidata 文件">
+      <svg viewBox="0 0 24 24" aria-hidden="true" class="drop-icon">
+        <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.7"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15" fill="none"
+              stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      </svg>
+      <p class="drop-title">拖入 <code>maidata.txt</code>，或点击选择文件</p>
+      <p class="drop-hint">支持 UTF-8 与带 BOM 的 UTF-16 LE／BE · 需要 &amp;inote_2 至 &amp;inote_6</p>
+      <input type="file" id="file-input" accept=".txt,text/plain" hidden />
+    </div>
+    <div class="input-actions">
+      <button type="button" class="ghost-button" id="paste-toggle" aria-expanded="false">粘贴文本</button>
+      <span class="input-note">或直接把谱面内容贴进来</span>
+    </div>
+    <div class="paste-wrap" id="paste-wrap" hidden>
+      <textarea id="paste-area" spellcheck="false" placeholder="&title=...&#10;&inote_5=(150){16}1,2,3,4,..."></textarea>
+      <div class="paste-actions">
+        <button type="button" class="primary-button" id="paste-run">解析这段谱面</button>
+        <button type="button" class="ghost-button" id="paste-clear">清空</button>
+      </div>
+    </div>
+  </section>
+
+  <p class="status" id="status" role="status" aria-live="polite"></p>
+  <div class="error-list" id="errors" role="alert"></div>
+
+  <section class="results" id="results" hidden></section>
+</main>
+
+<footer class="footer">
+  <div class="footer-grid">
+    <div>
+      <p class="footer-title">DXTag · 五维谱面评分</p>
+      <p class="footer-copy">
+        评分为未标定的启发式工作量代理，不含判定或最优手序求解，也不代表官方定数。
+        算法细节见 <a href="https://github.com/kckc7887/DXTag/blob/main/docs/ALGORITHM.md" target="_blank" rel="noreferrer">技术文档</a>。
+      </p>
+    </div>
+    <div class="footer-meta">
+      <p>引擎 <a href="https://github.com/kckc7887/DXTag" target="_blank" rel="noreferrer">kckc7887/DXTag</a></p>
+      <p>版本 <span id="footer-versions">—</span></p>
+      <p>MIT License · Copyright (c) 2026 尘言</p>
+    </div>
+  </div>
+</footer>
+
+<script type="module" src="./src/main.ts"></script>
+</body>
+</html>
