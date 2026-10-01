@@ -10,7 +10,8 @@
     "build": "vite build",
     "preview": "vite preview --port 4173",
     "typecheck": "tsc --noEmit",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node scripts/verify.mjs",
+    "verify:ui": "node scripts/verify-ui.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",

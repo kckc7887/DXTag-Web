@@ -41,10 +41,19 @@ function showErrors(list: readonly {difficulty: string; message: string}[]) {
   }));
 }
 
-function score(text: string, label: string) {
+function beginInput() {
+  const id = ++requestId;
+  batch = null;
+  results.hidden = true;
+  results.replaceChildren();
+  errors.replaceChildren();
+  return id;
+}
+
+function score(text: string, label: string, id = beginInput()) {
+  if (id !== requestId) return;
   const trimmed = text.trim();
   if (!trimmed) { setStatus('内容是空的，先放进一份 maidata 吧。', 'error'); return; }
-  const id = ++requestId;
   setStatus(`正在解析 ${label} …`, 'busy');
   errors.replaceChildren();
   worker.postMessage({id, text} satisfies ScoreRequest);
@@ -71,13 +80,19 @@ worker.onmessage = (event: MessageEvent<ScoreResponse>) => {
   const warned = response.errors.length ? `，${response.errors.length} 张失败` : '';
   setStatus(`已解析 ${response.charts.length} 张普通谱${warned}。`);
   showErrors(response.errors);
-  results.scrollIntoView({behavior: 'smooth', block: 'start'});
+  results.scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start'});
+};
+
+worker.onerror = () => {
+  beginInput();
+  setStatus('分析引擎未能完成运行，请刷新页面后重试。', 'error');
 };
 
 function jumpToAxis(axis: string) {
   const card = results.querySelector<HTMLElement>(`[data-axis="${CSS.escape(axis)}"]`);
   if (!card) return;
-  card.scrollIntoView({behavior: 'smooth', block: 'center'});
+  if (card instanceof HTMLDetailsElement) card.open = true;
+  card.scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center'});
   card.classList.add('is-active');
   window.setTimeout(() => card.classList.remove('is-active'), 1400);
 }
@@ -98,7 +113,8 @@ function paint() {
     tab.addEventListener('click', () => {
       activeSlot = Number(tab.dataset.slot);
       paint();
-      results.scrollIntoView({behavior: 'smooth', block: 'start'});
+      results.querySelector<HTMLButtonElement>(`.tab[data-slot="${activeSlot}"]`)?.focus({preventScroll: true});
+      results.scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start'});
     });
   });
   results.querySelectorAll<HTMLButtonElement>('[data-jump]').forEach(row => {
@@ -113,27 +129,40 @@ function paint() {
       await navigator.clipboard.writeText(cliJson(batch!.charts));
       button.textContent = '已复制 ✓';
     } catch {
-      button.textContent = '复制失败，请手动选择';
+      const fallback = results.querySelector<HTMLElement>('#json-fallback');
+      const field = results.querySelector<HTMLTextAreaElement>('#json-output');
+      if (fallback && field && batch) {
+        field.value = cliJson(batch.charts);
+        fallback.hidden = false;
+        field.focus();
+        field.select();
+      }
+      button.textContent = '请复制下方已选中的 JSON';
     }
     window.setTimeout(() => { button.textContent = '复制 CLI JSON'; }, 1800);
   });
   results.querySelector<HTMLButtonElement>('#reset-view')?.addEventListener('click', () => {
-    results.hidden = true;
-    results.replaceChildren();
-    batch = null;
+    beginInput();
     fileInput.value = '';
     pasteArea.value = '';
+    pasteWrap.hidden = true;
+    pasteToggle.setAttribute('aria-expanded', 'false');
+    pasteToggle.textContent = '粘贴文本';
     setStatus('');
     errors.replaceChildren();
-    dropZone.scrollIntoView({behavior: 'smooth', block: 'center'});
+    dropZone.focus({preventScroll: true});
+    dropZone.scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center'});
   });
 }
 
 async function readFile(file: File) {
+  const id = beginInput();
+  setStatus(`正在读取 ${file.name} …`, 'busy');
   try {
     const text = decodeMaidata(new Uint8Array(await file.arrayBuffer()));
-    score(text, file.name);
+    score(text, file.name, id);
   } catch (error) {
+    if (id !== requestId) return;
     setStatus(error instanceof Error ? error.message : String(error), 'error');
   }
 }
@@ -146,6 +175,7 @@ dropZone.addEventListener('keydown', event => {
 fileInput.addEventListener('change', () => {
   const file = fileInput.files?.[0];
   if (file) void readFile(file);
+  fileInput.value = '';
 });
 
 for (const type of ['dragenter', 'dragover']) {

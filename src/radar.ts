@@ -4,11 +4,11 @@
 import {AXIS_ORDER, type AxisName, type ChartAnalysis} from './analyze';
 
 export const AXIS_COLOR: Record<AxisName, string> = {
-  键盘: '#38bdf8',
-  星星: '#a78bfa',
-  技巧: '#fbbf24',
-  体力: '#34d399',
-  爆发: '#fb7185',
+  键盘: '#657c48',
+  星星: '#77758c',
+  技巧: '#ab7d32',
+  体力: '#4e8275',
+  爆发: '#b96a4d',
 };
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -48,8 +48,8 @@ export function createRadar(analysis: ChartAnalysis, onSelect?: (axis: AxisName)
 
   const defs = node('defs');
   const gradient = node('linearGradient', {id, x1: '0', y1: '0', x2: '1', y2: '1'});
-  for (const [offset, color] of [['0', '#38bdf8'], ['.5', '#a78bfa'], ['1', '#fb7185']] as const) {
-    gradient.append(node('stop', {offset, 'stop-color': color, 'stop-opacity': '.45'}));
+  for (const [offset, color] of [['0', '#9cac79'], ['.5', '#9cac79'], ['1', '#bf9874']] as const) {
+    gradient.append(node('stop', {offset, 'stop-color': color, 'stop-opacity': '.3'}));
   }
   defs.append(gradient);
   svg.append(defs);
