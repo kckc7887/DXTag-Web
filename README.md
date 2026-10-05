@@ -2,13 +2,11 @@
 
 在浏览器中读取 `maidata.txt`，查看谱面的五维评分、计算拆分和高负担片段。适合了解一张谱面的构成，或比较不同谱面的侧重。
 
-**[打开 DXTag-Web](https://kckc7887.github.io/DXTag-Web/)** · [评分引擎](https://github.com/kckc7887/DXTag) · [算法说明](https://github.com/kckc7887/DXTag/blob/d66c33caa97154e6ec77851dd64615595ba6c413/docs/ALGORITHM.md)
+**[打开 DXTag-Web](https://kckc7887.github.io/DXTag-Web/)** · [评分引擎](https://github.com/kckc7887/DXTag) · [算法说明](https://github.com/kckc7887/DXTag/blob/a768e059cb859538b68650efc37bdfd83206211e/docs/ALGORITHM.md)
 
 ## 页面与交互
 
 界面采用宣传片的浅青白底、彩色圆环、描边标题和轻量动效，直接呈现谱面输入与分析工具。雷达只绘制轮廓线；彩色圆环是装饰，**五边形网格外沿**才对应 10.0。结果以可点击的五维分数、可展开的计算依据和证据片段组织，不把五项相加成总分。
-
-页面适配桌面与窄屏；输入、难度切换、雷达轴、分数按钮和展开项均支持键盘。遵循系统的“减少动态效果”设置；动效只用于进入与结果呈现，不循环播放，也不改变计算。
 
 ## 使用
 
@@ -44,7 +42,7 @@
 - **权重与贡献**说明某一项如何进入本轴。键盘、技巧和爆发按运算顺序补足剩余分值，贡献不是简单的「归一值 × 权重」。
 - **片段列表**只展示模型选出的部分高值窗口，用于回看谱面，不是完整的难点标注。
 
-当前算法版本为 `dxtag-five-axis-v1.2`，谱内版本为 `chart-relative-burden-v1`；全曲库标尺保持原版本。更完整的定义和公式见 [引擎算法说明](https://github.com/kckc7887/DXTag/blob/d66c33caa97154e6ec77851dd64615595ba6c413/docs/ALGORITHM.md)。
+当前算法版本为 `dxtag-five-axis-v1.2`，谱内版本为 `chart-relative-burden-v1`；全曲库标尺保持原版本。更完整的定义和公式见 [引擎算法说明](https://github.com/kckc7887/DXTag/blob/a768e059cb859538b68650efc37bdfd83206211e/docs/ALGORITHM.md)。
 
 ## 数据处理
 
@@ -54,7 +52,7 @@
 
 ## 本地开发
 
-建议使用 **Node.js 22 的最新补丁版本**（与 CI 的主版本一致）和 npm。当前 Vite 7 的 Node.js 要求为 `^20.19.0 || >=22.12.0`；使用 Node.js 22 时不要安装早期版本。
+使用 Node.js 22.12.0 或更新版本和 npm。
 
 ```sh
 git clone --recurse-submodules https://github.com/kckc7887/DXTag-Web.git
@@ -74,17 +72,8 @@ git submodule update --init --recursive
 | 命令 | 用途 |
 | --- | --- |
 | `npm run dev` | 启动 Vite 开发服务，默认端口 5173 |
-| `npm run verify` | 用测试目录中的合成谱检查两种标尺与引擎分数的一致性，并复算归因 |
-| `npm run verify:ui` | 使用模拟 DOM 和 Worker 检查输入、切换、重置、异步响应与复制等交互逻辑 |
-| `npm run typecheck` | TypeScript 类型检查 |
 | `npm run build` | 生成静态文件到 `dist/` |
 | `npm run preview` | 预览构建产物，默认端口 4173 |
-
-提交前依次运行 `npm run verify`、`npm run verify:ui`、`npm run typecheck` 和 `npm run build`。
-
-- `verify` 当前覆盖五份合成回归输入，包括低分舍入和标尺封顶。文件仅供测试，不打包进页面；不代替引擎的完整测试，也不验证评分的实际有效性。
-- `verify:ui` 在 Node.js 中模拟 DOM 和 Worker，检查页面状态与事件逻辑；不验证真实浏览器的渲染、布局、辅助技术支持或剪贴板权限。
-- 修改界面后，还应在浏览器中检查文件导入、文本粘贴、难度切换、错误提示、复制及手动复制备用框，并检查窄屏布局和键盘操作。
 
 ### 界面资源
 
@@ -104,15 +93,13 @@ python scripts/subset-display-font.py /path/to/SourceHanSansSC-Heavy.otf
 - `src/analyze.ts` 调用引擎的解析与算法模块，保留用于解释分数的中间值，并按引擎顺序完成归一化和融合。
 - `src/worker.ts` 在后台线程执行分析，`src/main.ts` 处理输入和页面状态。
 - `src/render.ts`、`src/radar.ts` 和 `src/style.css` 负责结果展示。
-- `src/verify-entry.ts` 将页面分析结果与引擎的 `scoreChart()` 对照。
-
-更新引擎时，应在 `engine/` 中选择并检出明确的目标提交，再运行上述检查，同时核对 `src/analyze.ts` 的计算顺序和归因是否仍与引擎一致。最终提交的是新的 submodule 指针，而不是把引擎源码复制到页面仓库。
+更新引擎时，在 `engine/` 中检出明确的目标提交；本仓库提交新的 submodule 指针。
 
 ## 部署
 
 这是一个静态站点，构建产物为 `dist/`。默认资源路径是 `/DXTag-Web/`，用于 GitHub Pages 项目页。
 
-[部署工作流](.github/workflows/deploy.yml) 在推送到 `main` 或手动触发时运行：拉取 submodule、安装依赖、执行一致性校验和类型检查、构建，再发布到 GitHub Pages。仓库的 Pages 发布来源需设为 GitHub Actions；任一前置步骤失败，发布不会继续。
+[部署工作流](.github/workflows/deploy.yml) 在推送到 `main` 或手动触发时拉取 submodule、安装依赖、构建并发布到 GitHub Pages。仓库的 Pages 发布来源需设为 GitHub Actions。
 
 部署到域名根路径时，需在运行命令的环境中设置 `VITE_BASE`。当前配置直接读取 `process.env.VITE_BASE`，仅写入 `.env.local` 不会覆盖构建路径。
 
@@ -131,8 +118,8 @@ npm run build
 npm run preview
 ```
 
-其他子路径同样通过 `VITE_BASE` 指定，例如 `/tools/dxtag/`。预览时使用与构建相同的值，检查后将 `dist/` 交给静态托管服务；不要直接双击 `index.html` 运行。
+其他子路径同样通过 `VITE_BASE` 指定，例如 `/tools/dxtag/`。将 `dist/` 交给静态托管服务；不要直接双击 `index.html` 运行。
 
 ## 许可
 
-页面项目的 `package.json` 标注为 MIT。随附的字体为 SIL OFL 1.1 许可，见 [字体许可](public/fonts/OFL.txt)，不属于 MIT 许可范围。评分引擎的完整许可与版权声明见 [MIT 许可](https://github.com/kckc7887/DXTag/blob/0ccfb67c87c14015199fcfd1d8f9d01028abb6f4/LICENSE)。
+页面项目的 `package.json` 标注为 MIT。随附的字体为 SIL OFL 1.1 许可，见 [字体许可](public/fonts/OFL.txt)，不属于 MIT 许可范围。评分引擎的完整许可与版权声明见 [MIT 许可](https://github.com/kckc7887/DXTag/blob/a768e059cb859538b68650efc37bdfd83206211e/LICENSE)。

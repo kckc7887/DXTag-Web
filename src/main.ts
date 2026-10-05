@@ -95,9 +95,7 @@ worker.onmessage = (event: MessageEvent<ScoreResponse>) => {
   setStatus(`已解析 ${response.charts.length} 张普通谱${warned}。`);
   showErrors(response.errors);
   results.scrollIntoView({
-    behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
-      ? "instant"
-      : "smooth",
+    behavior: "smooth",
     block: "start",
   });
 };
@@ -114,12 +112,9 @@ function jumpToAxis(axis: string) {
   if (!card) return;
   if (card instanceof HTMLDetailsElement) card.open = true;
   card.scrollIntoView({
-    behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
-      ? "instant"
-      : "smooth",
+    behavior: "smooth",
     block: "center",
   });
-  card.querySelector<HTMLElement>("summary")?.focus({ preventScroll: true });
   card.classList.add("is-active");
   window.setTimeout(() => card.classList.remove("is-active"), 1400);
 }
@@ -144,8 +139,6 @@ function paint() {
     button.addEventListener('click', () => {
       scoreScale = button.dataset.scoreScale as ScoreScale;
       paint();
-      results.querySelector<HTMLButtonElement>(`[data-score-scale="${scoreScale}"]`)
-        ?.focus({preventScroll: true});
     });
   });
 
@@ -155,13 +148,8 @@ function paint() {
       tab.addEventListener("click", () => {
         activeSlot = Number(tab.dataset.slot);
         paint();
-        results
-          .querySelector<HTMLButtonElement>(`.tab[data-slot="${activeSlot}"]`)
-          ?.focus({ preventScroll: true });
         results.scrollIntoView({
-          behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
-            ? "instant"
-            : "smooth",
+          behavior: "smooth",
           block: "start",
         });
       });
@@ -182,11 +170,8 @@ function paint() {
         );
         if (panel) {
           panel.open = true;
-          panel.querySelector("summary")?.focus();
           panel.scrollIntoView({
-            behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
-              ? "instant"
-              : "smooth",
+            behavior: "smooth",
             block: "center",
           });
         }
@@ -212,7 +197,6 @@ function paint() {
         if (fallback && field && batch) {
           field.value = scoreJson(exportedBatch.charts, exportedScale);
           fallback.hidden = false;
-          field.focus();
           field.select();
         }
         button.textContent = "请复制下方已选中的 JSON";
@@ -229,16 +213,12 @@ function paint() {
       fileInput.value = "";
       pasteArea.value = "";
       pasteWrap.hidden = true;
-      pasteToggle.setAttribute("aria-expanded", "false");
       pasteToggle.textContent = "粘贴文本";
       setStatus("");
       $("empty-state").hidden = false;
       errors.replaceChildren();
-      dropZone.focus({ preventScroll: true });
       dropZone.scrollIntoView({
-        behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "instant"
-          : "smooth",
+        behavior: "smooth",
         block: "center",
       });
     });
@@ -258,7 +238,6 @@ async function readFile(file: File) {
 
 // ---- 输入：文件、拖放、粘贴 ----
 dropZone.addEventListener("click", () => fileInput.click());
-// Native button supplies Enter/Space activation without duplicate picker calls.
 fileInput.addEventListener("change", () => {
   const file = fileInput.files?.[0];
   if (file) void readFile(file);
@@ -288,14 +267,11 @@ window.addEventListener("drop", (event) => event.preventDefault());
 pasteToggle.addEventListener("click", () => {
   const open = pasteWrap.hidden;
   pasteWrap.hidden = !open;
-  pasteToggle.setAttribute("aria-expanded", String(open));
   pasteToggle.textContent = open ? "收起粘贴框" : "粘贴文本";
-  if (open) pasteArea.focus();
 });
 $<HTMLButtonElement>("paste-run").addEventListener("click", () =>
   score(pasteArea.value, "粘贴的谱面"),
 );
 $<HTMLButtonElement>("paste-clear").addEventListener("click", () => {
   pasteArea.value = "";
-  pasteArea.focus();
 });

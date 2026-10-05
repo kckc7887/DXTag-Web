@@ -1,5 +1,5 @@
 import { AXIS_ORDER, type AxisName, type ChartAnalysis } from "./analyze";
-import {SCORE_SCALE_LABELS, scoresFor, type ScoreScale} from './score-scale';
+import {scoresFor, type ScoreScale} from './score-scale';
 export const AXIS_COLOR: Record<AxisName, string> = {
   键盘: "#f34aa7",
   星星: "#20bfdc",
@@ -27,19 +27,17 @@ export function createRadar(
   const scores = scoresFor(chart, scale);
   const svg = el("svg", {
     viewBox: "0 0 440 440",
-    role: onSelect ? "group" : "img",
-    "aria-label": `${SCORE_SCALE_LABELS[scale]}五维雷达图，满分10：${AXIS_ORDER.map((a) => `${a} ${scores[a].toFixed(1)}`).join("，")}`,
   }) as SVGSVGElement;
   // Original CSS/SVG treatment: a candy-colored instrument ring, never a filled score area.
   svg.append(
-    el("circle", { cx: 224, cy: 226, r: 200, class: "radar-orbit-shadow", "aria-hidden": "true" }),
-    el("circle", { cx: 220, cy: 220, r: 199, class: "radar-orbit-white", "aria-hidden": "true" }),
-    el("circle", { cx: 220, cy: 220, r: 194, class: "radar-orbit", "aria-hidden": "true" }),
+    el("circle", { cx: 224, cy: 226, r: 200, class: "radar-orbit-shadow" }),
+    el("circle", { cx: 220, cy: 220, r: 199, class: "radar-orbit-white" }),
+    el("circle", { cx: 220, cy: 220, r: 194, class: "radar-orbit" }),
   );
   for (const [offset, color] of [[20, "#f4d641"], [350, "#f34aa7"], [640, "#91cf44"], [940, "#9560d9"]] as const) {
     svg.append(el("circle", {
       cx: 220, cy: 220, r: 194, class: "radar-segment", stroke: color,
-      "stroke-dasharray": "23 1196", "stroke-dashoffset": -offset, "aria-hidden": "true",
+      "stroke-dasharray": "23 1196", "stroke-dashoffset": -offset,
     }));
   }
   for (const n of [2, 4, 6, 8, 10]) {
@@ -72,13 +70,6 @@ export function createRadar(
     const [lx, ly] = point(i, 155);
     const g = el("g", {
       class: "radar-label",
-      ...(onSelect
-        ? {
-            role: "button",
-            tabindex: "0",
-            "aria-label": `${axis} ${scores[axis].toFixed(1)}，查看依据`,
-          }
-        : {}),
     });
     const text = el("text", { x: lx!, y: ly!, "text-anchor": "middle" });
     text.textContent = axis;
@@ -103,13 +94,6 @@ export function createRadar(
     );
     if (onSelect) {
       g.addEventListener("click", () => onSelect(axis));
-      g.addEventListener("keydown", (event) => {
-        const e = event as KeyboardEvent;
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onSelect(axis);
-        }
-      });
     }
     svg.append(g);
   });

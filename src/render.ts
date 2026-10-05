@@ -49,7 +49,7 @@ function axisDetail(a: AxisReport, i: number) {
       <h3>${a.axis}</h3>
       <span class="detail-hint">${descriptions[i]}</span
       ><strong>${a.score.toFixed(1)}<small> / 10</small></strong
-      ><span class="disclosure" aria-hidden="true">＋</span>
+      ><span class="disclosure">＋</span>
     </summary>
     <div class="axis-body">
       <p class="reason">${esc(a.reason)}</p>
@@ -59,9 +59,6 @@ function axisDetail(a: AxisReport, i: number) {
       </div>
       <div
         class="table-scroll"
-        role="region"
-        tabindex="0"
-        aria-label="评分归因，可横向滚动"
       >
         <table>
           <caption>
@@ -97,11 +94,11 @@ function chartAxisDetail(a: ChartRelativeAxis, i: number, chart: ChartAnalysis) 
     ? `原始负担 ${num(a.raw, 4)} / 本谱最强负担 ${num(maximum, 4)} × 10 → ${a.score.toFixed(1)}`
     : '五维原始负担均为 0 → 0.0';
   return /* HTML */ `<details class="axis-detail" data-axis="${esc(a.axis)}" id="axis-${i}" style="--axis:${AXIS_COLOR[a.axis]}">
-    <summary><span class="axis-index">0${i + 1}</span><h3>${a.axis}</h3><span class="detail-hint">${descriptions[i]}</span><strong>${a.score.toFixed(1)}<small> / 10</small></strong><span class="disclosure" aria-hidden="true">＋</span></summary>
+    <summary><span class="axis-index">0${i + 1}</span><h3>${a.axis}</h3><span class="detail-hint">${descriptions[i]}</span><strong>${a.score.toFixed(1)}<small> / 10</small></strong><span class="disclosure">＋</span></summary>
     <div class="axis-body">
       <p class="reason">按本谱面的原始动作计算四拍负担，以整谱均值为主，并考虑覆盖 90% 谱面时长的负担分位。最强维度映射为 10.0。</p>
       <div class="formula"><span>谱内独立计算 · 动作负担 / 秒</span><code>${esc(a.formula)}</code><code>${esc(aggregate)}</code><code>${esc(projection)}</code></div>
-      <div class="table-scroll chart-costs" role="region" tabindex="0" aria-label="谱内负担来源，可横向滚动">
+      <div class="table-scroll chart-costs">
         <table><caption>原始负担来源<span>时间均值反映组成；P90 根据本维度的完整块负担计算</span></caption>
           <thead><tr><th>来源</th><th>时间均值 / 秒</th><th>成本总和</th></tr></thead>
           <tbody>${a.sources.map(source => `<tr><td><b>${esc(source.label)}</b></td><td>${num(source.meanRate, 4)}</td><td>${num(source.totalCost, 3)}</td></tr>`).join('')}</tbody>
@@ -137,7 +134,7 @@ function windowList<T extends WindowRow>(
     <summary>
       <h3>${title}</h3>
       <span>${items.length} 个片段</span
-      ><span class="disclosure" aria-hidden="true">＋</span>
+      ><span class="disclosure">＋</span>
     </summary>
     <p class="window-hint">${hint}</p>
     ${items.length ? `<ol class="window-list">${items.map((w, i) => `<li><span class="window-rank">${String(i + 1).padStart(2, "0")}</span><div><b class="window-time">${time(w.startMs)}–${time(w.endMs)}</b><span>${beats(w.startBeat, w.endBeat)}</span><p>${detail(w)}</p></div><strong>${value(w)}<small>原始量</small></strong></li>`).join("")}</ol>` : '<p class="no-window">没有触发该类证据的片段。</p>'}
@@ -156,7 +153,6 @@ function windowMap(a: ChartAnalysis) {
   const span = last - first;
   return /* HTML */ `<div
     class="window-map"
-    aria-label="所选证据时间范围，非完整谱面密度图"
   >
     <p class="timeline-caption">所选证据时间范围 · 仅展示下列高负担窗口</p>
     <div class="timeline-scale">
@@ -233,14 +229,14 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
     </header>
     <div class="difficulty-row">
       <span>谱面难度</span>
-      <div class="tabs" role="group" aria-label="选择难度">
-        ${o.slots.map((s) => `<button type="button" class="tab${s.slot === o.activeSlot ? " is-active" : ""}" data-slot="${s.slot}" aria-pressed="${s.slot === o.activeSlot}"${o.charts.some((c) => c.slot === s.slot) ? "" : ' disabled title="此难度计算失败，请查看错误信息"'}>${esc(s.name)}</button>`).join("")}
+      <div class="tabs">
+        ${o.slots.map((s) => `<button type="button" class="tab${s.slot === o.activeSlot ? " is-active" : ""}" data-slot="${s.slot}"${o.charts.some((c) => c.slot === s.slot) ? "" : ' disabled title="此难度计算失败，请查看错误信息"'}>${esc(s.name)}</button>`).join("")}
       </div>
       <span class="scale-note">独立维度 · 0.0–10.0</span>
     </div>
     <div class="scale-picker">
-      <div class="scale-buttons" role="group" aria-label="评分参照">
-        ${(['library', 'chart'] as const).map(scale => `<button type="button" data-score-scale="${scale}" aria-pressed="${o.scoreScale === scale}">${SCORE_SCALE_LABELS[scale]}</button>`).join('')}
+      <div class="scale-buttons">
+        ${(['library', 'chart'] as const).map(scale => `<button type="button" class="${o.scoreScale === scale ? 'is-active' : ''}" data-score-scale="${scale}">${SCORE_SCALE_LABELS[scale]}</button>`).join('')}
       </div>
       <p class="scale-description">${scoreScaleDescription(a, o.scoreScale)}</p>
     </div>
@@ -249,7 +245,7 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
         >自动复制不可用，请手动复制全部已解析难度的${SCORE_SCALE_LABELS[o.scoreScale]} JSON</label
       ><textarea id="json-output" readonly spellcheck="false"></textarea>
     </div>
-    <section class="profile" aria-label="五维评分">
+    <section class="profile">
       <div class="radar-panel">
         <div class="radar-topline">
           <span>YOUR CHART, IN FIVE AXES</span><span>DX / 05</span>
@@ -262,14 +258,14 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
           <h3>这张谱，难在哪里？</h3>
           <span>点选维度，展开依据 ↗</span>
         </div>
-        ${AXIS_ORDER.map((axis, i) => `<button class="score-row" data-jump="${i}" style="--axis:${AXIS_COLOR[axis]}" type="button" aria-label="${axis} ${scores[axis].toFixed(1)}，查看评分依据"><span class="score-index">0${i + 1}</span><span class="score-info"><b>${axis}</b><small>${descriptions[i]}</small><span class="score-track"><i style="width:${scores[axis] * 10}%"></i></span></span><span class="score-value">${scores[axis].toFixed(1)}</span></button>`).join("")}
+        ${AXIS_ORDER.map((axis, i) => `<button class="score-row" data-jump="${i}" style="--axis:${AXIS_COLOR[axis]}" type="button"><span class="score-index">0${i + 1}</span><span class="score-info"><b>${axis}</b><small>${descriptions[i]}</small><span class="score-track"><i style="width:${scores[axis] * 10}%"></i></span></span><span class="score-value">${scores[axis].toFixed(1)}</span></button>`).join("")}
         <p class="score-footnote">各维度独立描述谱面特征，不合并为总分。</p>
       </div>
     </section>
     ${stats(a)}
     <section class="explanations">
       <div class="section-heading">
-        <span aria-label="第一部分">01</span>
+        <span>01</span>
         <h2>分数从哪里来</h2>
         <p>每个数值，都可以继续往下追。</p>
       </div>
@@ -277,7 +273,7 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
     </section>
     <section class="windows">
       <div class="section-heading">
-        <span aria-label="第二部分">02</span>
+        <span>02</span>
         <h2>把难点定位到片段</h2>
         <p>
           仅标记筛选出的高负担窗口，不代表完整密度曲线。展开查看时间、拍点与原始量。

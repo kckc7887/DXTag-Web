@@ -6,9 +6,6 @@
  * same engine functions in the very same order as `src/index.ts#scoreChart`
  * and keeps every intermediate value instead of discarding it.
  *
- * Both score groups match the CLI — `npm run verify` asserts that against the
- * engine's own `scoreChart` for every regression fixture.
- *
  * Axis fusion reference: engine `docs/ALGORITHM.md` §8.
  *   键盘 = 100 - (100-K0) * (1-0.65H/100) * (1-0.35L/100)
  *   星星 = Xs
