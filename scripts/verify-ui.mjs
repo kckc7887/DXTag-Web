@@ -91,7 +91,12 @@ assert.deepEqual(displayed(),expectedValues(switchChart.chartRelativeScores));
 assert.equal(Math.max(...displayed()),10);
 assert.notEqual($('radar-host').querySelector('.radar-area').getAttribute('points'),globalPoints,'radar follows the selected scale');
 assert.ok($('radar-host').querySelector('svg').getAttribute('aria-label').includes('相对本谱面'));
-assert.equal($('results').querySelectorAll('table').length,0,'chart mode shows relative calculation, not a second library-score display');
+assert.equal($('results').querySelectorAll('table').length,5,'chart mode has its own workload-source tables');
+for(const card of $('results').querySelectorAll('[data-axis]')){
+ assert.ok(card.querySelector('.formula').textContent.includes('75%'));
+ assert.ok(card.querySelector('.formula').textContent.includes('P90'));
+ assert.ok(!card.textContent.includes('锚点'),'chart evidence never borrows library normalization');
+}
 assert.equal($('results').querySelectorAll('[data-score-scale][aria-pressed="true"]').length,1);
 assert.equal(dom.document.activeElement,$('results').querySelector('[data-score-scale="chart"]'));
 for(const [i,axis] of ctx.qa.AXIS_ORDER.entries()){
@@ -110,27 +115,29 @@ for(const i of [ctx.qa.FIXTURES.findIndex(fixture=>fixture.id==='low')]){
  const fromRounded=expectedValues(checked.scores).map(score=>Math.round(score/roundedPeak*100)/10);
  assert.notDeepEqual(displayed(),fromRounded,'low fixture detects using rounded library scores for relative conversion');
 }
-// A capped peak makes the two scales identical, including the actual switch path.
+// A capped library peak still has independently calculated chart composition.
 submitFixture(ctx.qa.FIXTURES.findIndex(fixture=>fixture.id==='saturated'));
 const saturated=respond().charts[0];
 assert.equal(Math.max(...expectedValues(saturated.scores)),10);
-assert.deepEqual(displayed(),expectedValues(saturated.scores));
-assert.ok($('results').querySelector('.scale-description').textContent.includes('比例换算倍数为 1'));
+assert.deepEqual(displayed(),expectedValues(saturated.chartRelativeScores));
+assert.notDeepEqual(displayed(),expectedValues(saturated.scores));
+assert.ok($('results').querySelector('.scale-description').textContent.includes('直接分析'));
 $('results').querySelector('[data-score-scale="library"]').click();
 const saturatedPoints=$('radar-host').querySelector('.radar-area').getAttribute('points');
 $('results').querySelector('[data-score-scale="chart"]').click();
-assert.equal($('radar-host').querySelector('.radar-area').getAttribute('points'),saturatedPoints);
+assert.notEqual($('radar-host').querySelector('.radar-area').getAttribute('points'),saturatedPoints);
 assert.equal($('results').querySelector('[data-score-scale="chart"]').getAttribute('aria-pressed'),'true');
-assert.ok($('results').querySelector('.scale-description').textContent.includes('无法恢复封顶前的差异'));
-const nearCap={...saturated,axes:Array.from(saturated.axes,axis=>({...axis,internal:axis.internal*.999}))};
-assert.ok(ctx.qa.scoreScaleDescription(nearCap,'chart').includes('舍入后消失'),'a displayed 10.0 is not proof of an exact cap');
+assert.ok(!$('results').querySelector('.scale-description').textContent.includes('封顶'));
+const alteredLibrary={...saturated,scores:Object.fromEntries(ctx.qa.AXIS_ORDER.map(axis=>[axis,1])),axes:Array.from(saturated.axes,axis=>({...axis,internal:1}))};
+assert.equal(ctx.qa.scoreScaleDescription(alteredLibrary,'chart'),ctx.qa.scoreScaleDescription(saturated,'chart'),'library values cannot change the local explanation');
 // Zero scores are a renderer boundary: mine-only inputs are rejected by the engine.
 const zeroScores=Object.fromEntries(ctx.qa.AXIS_ORDER.map(axis=>[axis,0]));
-const zeroChart={...switchChart,scores:zeroScores,chartRelativeScores:zeroScores,axes:Array.from(switchChart.axes,axis=>({...axis,internal:0}))};
+const zeroChart={...switchChart,scores:zeroScores,chartRelativeScores:zeroScores,axes:Array.from(switchChart.axes,axis=>({...axis,internal:0})),
+ chartRelative:{...switchChart.chartRelative,scores:zeroScores,rawScores:zeroScores,profile:[],axes:Array.from(switchChart.chartRelative.axes,axis=>({...axis,score:0,raw:0,mean:0,p90:0,windows:[],sources:Array.from(axis.sources,source=>({...source,meanRate:0,totalCost:0}))}))}};
 submitFixture(0);worker.onmessage({data:{id:last().id,ok:true,charts:[zeroChart],slots:ctx.qa.listDifficulties(last().text),errors:[]}});
 assert.deepEqual(displayed(),[0,0,0,0,0]);
 assert.ok($('results').querySelector('.scale-description').textContent.includes('都为 0.0'));
-for(const formula of $('results').querySelectorAll('.formula'))assert.ok(formula.textContent.includes('五维融合值均为 0 → 0.0'));
+for(const formula of $('results').querySelectorAll('.formula'))assert.ok(formula.textContent.includes('五维原始负担均为 0 → 0.0'));
 assert.ok(!/NaN|undefined|Infinity/.test($('results').textContent));
 $('results').querySelector('[data-score-scale="library"]').click();
 assert.equal($('results').querySelectorAll('table').length,5);

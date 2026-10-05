@@ -1,5 +1,5 @@
 /** All imported metadata is escaped before HTML rendering. */
-import { AXIS_ORDER, type AxisReport, type ChartAnalysis } from "./analyze";
+import { AXIS_ORDER, type AxisReport, type ChartAnalysis, type ChartRelativeAxis } from "./analyze";
 import { AXIS_COLOR, createRadar } from "./radar";
 import {scoreScaleDescription, SCORE_SCALE_LABELS, scoresFor, type ScoreScale} from './score-scale';
 const esc = (v: unknown) =>
@@ -37,11 +37,7 @@ const descriptions = [
   "持续输入与滑动占用",
   "短时密度与局部突增",
 ];
-function axisDetail(a: AxisReport, i: number, scale: ScoreScale, score: number, chartIsZero: boolean) {
-  const relative = scale === 'chart';
-  const relativeFormula = chartIsZero
-    ? '五维融合值均为 0 → 0.0'
-    : `未舍入的本维度融合值 ÷ 五维最大融合值 × 10 → ${score.toFixed(1)}`;
+function axisDetail(a: AxisReport, i: number) {
   return /* HTML */ `<details
     class="axis-detail"
     data-axis="${esc(a.axis)}"
@@ -52,16 +48,16 @@ function axisDetail(a: AxisReport, i: number, scale: ScoreScale, score: number, 
       <span class="axis-index">0${i + 1}</span>
       <h3>${a.axis}</h3>
       <span class="detail-hint">${descriptions[i]}</span
-      ><strong>${score.toFixed(1)}<small> / 10</small></strong
+      ><strong>${a.score.toFixed(1)}<small> / 10</small></strong
       ><span class="disclosure" aria-hidden="true">＋</span>
     </summary>
     <div class="axis-body">
-      <p class="reason">${relative ? (chartIsZero ? '本谱面五维负担均为零，自身相对分数也全部为 0.0。' : '以本谱面五个维度的最大融合值为参照，显示舍入前计算比例；最高维度为 10.0。') : esc(a.reason)}</p>
+      <p class="reason">${esc(a.reason)}</p>
       <div class="formula">
-        <span>${relative ? '本谱面五维比较 · 最后保留一位小数' : '计算公式 · 内部标尺 0–100，换算为 0–10 并保留一位小数'}</span
-        ><code>${esc(relative ? relativeFormula : a.formula)}</code>
+        <span>计算公式 · 内部标尺 0–100，换算为 0–10 并保留一位小数</span
+        ><code>${esc(a.formula)}</code>
       </div>
-      ${relative ? '' : `<div
+      <div
         class="table-scroll"
         role="region"
         tabindex="0"
@@ -87,10 +83,38 @@ function axisDetail(a: AxisReport, i: number, scale: ScoreScale, score: number, 
           </tbody>
         </table>
       </div>
-      ${a.baselineParts.length ? `<div class="baseline-parts">${a.baselineParts.map((p) => `<span>${esc(p.label)} <b>${num(p.value)}</b> · ${(p.share * 100).toFixed(1)}%</span>`).join("")}</div>` : ""}${a.axis === "星星" ? `<p class="precision-note">星星原值 ${num(a.baselineRaw, 3)} ÷ 锚点 ${num(a.baselineAnchor)}；各分量独立舍入，整体归一后还会封顶，因此分量显示值之和可能与最终结果略有差异；以引擎汇总值为准。</p>` : ""}`}
+      ${a.baselineParts.length ? `<div class="baseline-parts">${a.baselineParts.map((p) => `<span>${esc(p.label)} <b>${num(p.value)}</b> · ${(p.share * 100).toFixed(1)}%</span>`).join("")}</div>` : ""}${a.axis === "星星" ? `<p class="precision-note">星星原值 ${num(a.baselineRaw, 3)} ÷ 锚点 ${num(a.baselineAnchor)}；各分量独立舍入，整体归一后还会封顶，因此分量显示值之和可能与最终结果略有差异；以引擎汇总值为准。</p>` : ""}
       <dl class="evidence">
         ${a.evidence.map((e) => `<div><dt>${esc(e.label)}</dt><dd>${esc(e.value)}</dd></div>`).join("")}
       </dl>
+    </div>
+  </details>`;
+}
+function chartAxisDetail(a: ChartRelativeAxis, i: number, chart: ChartAnalysis) {
+  const maximum = Math.max(...Object.values(chart.chartRelative.rawScores));
+  const aggregate = `75% × 均值 ${num(a.mean, 4)} + 25% × P90 ${num(a.p90, 4)} = 原始负担 ${num(a.raw, 4)}`;
+  const projection = maximum > 0
+    ? `原始负担 ${num(a.raw, 4)} / 本谱最强负担 ${num(maximum, 4)} × 10 → ${a.score.toFixed(1)}`
+    : '五维原始负担均为 0 → 0.0';
+  return /* HTML */ `<details class="axis-detail" data-axis="${esc(a.axis)}" id="axis-${i}" style="--axis:${AXIS_COLOR[a.axis]}">
+    <summary><span class="axis-index">0${i + 1}</span><h3>${a.axis}</h3><span class="detail-hint">${descriptions[i]}</span><strong>${a.score.toFixed(1)}<small> / 10</small></strong><span class="disclosure" aria-hidden="true">＋</span></summary>
+    <div class="axis-body">
+      <p class="reason">按本谱面的原始动作计算四拍负担，以整谱均值为主，并考虑覆盖 90% 谱面时长的负担分位。最强维度映射为 10.0。</p>
+      <div class="formula"><span>谱内独立计算 · 动作负担 / 秒</span><code>${esc(a.formula)}</code><code>${esc(aggregate)}</code><code>${esc(projection)}</code></div>
+      <div class="table-scroll chart-costs" role="region" tabindex="0" aria-label="谱内负担来源，可横向滚动">
+        <table><caption>原始负担来源<span>时间均值反映组成；P90 根据本维度的完整块负担计算</span></caption>
+          <thead><tr><th>来源</th><th>时间均值 / 秒</th><th>成本总和</th></tr></thead>
+          <tbody>${a.sources.map(source => `<tr><td><b>${esc(source.label)}</b></td><td>${num(source.meanRate, 4)}</td><td>${num(source.totalCost, 3)}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>
+      <dl class="evidence">
+        <div><dt>整谱时间均值</dt><dd>${num(a.mean, 4)}</dd></div><div><dt>时间加权 P90</dt><dd>${num(a.p90, 4)}</dd></div>
+        <div><dt>原始负担</dt><dd>${num(a.raw, 4)}</dd></div><div><dt>本谱最强负担</dt><dd>${num(maximum, 4)}</dd></div>
+        <div><dt>统计时长</dt><dd>${num(chart.chartRelative.seconds, 2)} 秒（保留谱中休息）</dd></div>
+        <div><dt>原生输入间隔</dt><dd>${num(chart.chartRelative.nativeInputIntervalMs, 2)} 毫秒</dd></div>
+      </dl>
+      <p class="precision-note">原始量按显示精度列出；最终比例使用未舍入的整谱负担。</p>
+      ${a.windows.length ? `<ol class="window-list">${a.windows.map((block, index) => `<li><span class="window-rank">${String(index + 1).padStart(2, '0')}</span><div><b class="window-time">${time(block.startMs)}–${time(block.endMs)}</b><span>${beats(block.startBeat, block.endBeat)}</span><p>当前负担 ${num(block.demand, 3)} · 周围持续水平 ${num(block.sustainedLevel, 3)}</p></div><strong>${num(block.rates[a.axis], 3)}<small>负担 / 秒</small></strong></li>`).join('')}</ol>` : '<p class="no-window">没有该维度的动作负担。</p>'}
     </div>
   </details>`;
 }
@@ -185,7 +209,6 @@ export type ChartViewOptions = {
 };
 export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
   const scores = scoresFor(a, o.scoreScale);
-  const chartIsZero = AXIS_ORDER.every(axis => a.chartRelativeScores[axis] === 0);
   const metadata = [
     a.stats.artist,
     a.stats.designer ? `谱师 ${a.stats.designer}` : "",
@@ -250,7 +273,7 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
         <h2>分数从哪里来</h2>
         <p>每个数值，都可以继续往下追。</p>
       </div>
-      ${a.axes.map((axis, index) => axisDetail(axis, index, o.scoreScale, scores[axis.axis], chartIsZero)).join("")}
+      ${o.scoreScale === 'chart' ? a.chartRelative.axes.map((axis, index) => chartAxisDetail(axis, index, a)).join('') : a.axes.map((axis, index) => axisDetail(axis, index)).join('')}
     </section>
     <section class="windows">
       <div class="section-heading">
@@ -299,7 +322,7 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
     <details class="raw-panel">
       <summary>原始观察量与版本 <span>用于复核与复现</span></summary>
       <dl class="raw-grid">
-        ${a.features.map((f) => `<div><dt>${esc(f.label)}</dt><dd>${num(f.value, 4)}</dd></div>`).join("")}
+        ${o.scoreScale === 'chart' ? a.chartRelative.axes.map(axis => `<div><dt>${esc(axis.axis)} 原始负担</dt><dd>${num(axis.raw, 4)}</dd></div>`).join('') : a.features.map((f) => `<div><dt>${esc(f.label)}</dt><dd>${num(f.value, 4)}</dd></div>`).join('')}
       </dl>
       <p class="versions">
         ${Object.entries(a.versions)

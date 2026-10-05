@@ -193,6 +193,7 @@ details[open] > summary .disclosure { transform: rotate(45deg); }
 .formula code { display: block; font-family: var(--mono); font-size: 13px; overflow-wrap: anywhere; line-height: 1.8; }
 .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
 table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 690px; text-align: left; }
+.chart-costs table { min-width: 420px; }
 caption { text-align: left; padding: 15px 17px; font-weight: 700; }
 caption span { margin-left: 12px; color: var(--muted); font-size: 11px; font-weight: 400; }
 th { font-size: 11px; color: var(--muted); background: #f0f8fb; font-weight: 500; }
@@ -351,6 +352,7 @@ footer > div { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); f
 }
 @media (max-width: 380px) {
   .masthead, main, footer { width: calc(100% - 28px); }
+  .title-stage { overflow-x: clip; }
   .masthead nav { gap: 12px; }
   .masthead nav span { display: none; }
   .input-intro { gap: 12px; }

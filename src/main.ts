@@ -1,4 +1,4 @@
-import { ALGORITHM_VERSION, SCALE_VERSION } from "./analyze";
+import { ALGORITHM_VERSION, CHART_RELATIVE_VERSION, SCALE_VERSION } from "./analyze";
 import { decodeMaidata } from "./decode";
 import type { ScoreRequest, ScoreResponse, ScoreSuccess } from "./protocol";
 import { scoreJson, mountRadar, renderChartView } from "./render";
@@ -26,7 +26,7 @@ let sourceLabel = "";
 let scoreScale: ScoreScale = 'library';
 
 $<HTMLElement>("footer-versions").textContent =
-  `${ALGORITHM_VERSION} · ${SCALE_VERSION}`;
+  `${ALGORITHM_VERSION} · ${SCALE_VERSION} · ${CHART_RELATIVE_VERSION}`;
 
 function setStatus(message: string, kind: "" | "error" | "busy" = "") {
   status.textContent = message;

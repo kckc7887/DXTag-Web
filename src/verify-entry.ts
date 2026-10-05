@@ -3,12 +3,15 @@
 import {scoreChart} from '../engine/src/index';
 import {AXIS_ORDER, analyzeChart, listDifficulties} from './analyze';
 import {FIXTURES} from '../tests/fixtures';
+/** Populated only by the Node verification harness; never a page input. */
+declare const REAL_CHART_FIXTURES: {id: string; text: string}[];
+const samples = [...FIXTURES, ...REAL_CHART_FIXTURES];
 
 const problems: string[] = [];
 const rows: string[] = [];
 let checked = 0;
 
-for (const sample of FIXTURES) {
+for (const sample of samples) {
   for (const {slot, name} of listDifficulties(sample.text)) {
     const expected = scoreChart(sample.text, slot);
     const analysis = analyzeChart(sample.text, slot);
@@ -19,6 +22,13 @@ for (const sample of FIXTURES) {
       }
       if (analysis.chartRelativeScores[axis] !== expected.chartRelativeScores[axis]) {
         problems.push(`${sample.id}/${name} ${axis}: 本谱面相对分数与引擎不一致`);
+      }
+      const local = analysis.chartRelative.axes.find(entry => entry.axis === axis)!;
+      if (local.score !== expected.chartRelativeScores[axis] || local.raw !== analysis.chartRelative.rawScores[axis]) {
+        problems.push(`${sample.id}/${name} ${axis}: 谱内分数、原始负担与依据不一致`);
+      }
+      if (Math.abs(local.raw - (.75 * local.mean + .25 * local.p90)) > 1e-9) {
+        problems.push(`${sample.id}/${name} ${axis}: 谱内均值/P90 与原始负担不一致`);
       }
       const report = analysis.axes.find(entry => entry.axis === axis)!;
       if (Math.round(report.internal) / 10 !== analysis.scores[axis]) {
@@ -60,4 +70,4 @@ if (problems.length) {
   for (const problem of problems) console.error('  - ' + problem);
   throw new Error('引擎一致性校验失败');
 }
-console.log(`\n✓ 两组五维分数、内部融合值与归因复算全部与引擎一致（${checked} 张谱面）`);
+console.log(`\n✓ 两组五维分数、谱内负担与均值/P90、全曲库融合与归因复算全部与引擎一致（${checked} 张谱面）`);

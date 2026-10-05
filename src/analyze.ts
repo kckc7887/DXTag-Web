@@ -21,13 +21,15 @@ import {baseBurden} from '../engine/src/algorithm/base-burden';
 import {starComplexity} from '../engine/src/algorithm/star-complexity';
 import {keyboardRhythmComplexity} from '../engine/src/algorithm/rhythm-complexity';
 import {inputComplexity} from '../engine/src/algorithm/input-complexity';
-import {chartRelativeRadar, complexityRadar, legacyRadar} from '../engine/src/algorithm/five-axis-complexity';
-import {ALGORITHM_VERSION, DIFFICULTIES, SCALE_VERSION, type Difficulty} from '../engine/src/index';
+import {complexityRadar, legacyRadar} from '../engine/src/algorithm/five-axis-complexity';
+import {chartRelativeBurden, type ChartRelativeResult} from '../engine/src/algorithm/chart-relative-burden';
+import {ALGORITHM_VERSION, CHART_RELATIVE_VERSION, DIFFICULTIES, SCALE_VERSION, type Difficulty} from '../engine/src/index';
 import scale from '../engine/src/scale.json';
 import type {Chart, Note} from '../engine/src/simai/types';
 
-export {ALGORITHM_VERSION, SCALE_VERSION, DIFFICULTIES};
+export {ALGORITHM_VERSION, CHART_RELATIVE_VERSION, SCALE_VERSION, DIFFICULTIES};
 export type {Difficulty};
+export type {ChartRelativeAxis} from '../engine/src/algorithm/chart-relative-burden';
 
 export const AXIS_ORDER = ['键盘', '星星', '技巧', '体力', '爆发'] as const;
 export type AxisName = (typeof AXIS_ORDER)[number];
@@ -99,6 +101,7 @@ export type ChartAnalysis = {
   slot: number; difficulty: string; title: string;
   scores: Record<AxisName, number>;
   chartRelativeScores: Record<AxisName, number>;
+  chartRelative: ChartRelativeResult;
   axes: AxisReport[];
   stats: ChartStats;
   features: {label: string; value: number}[];
@@ -112,7 +115,7 @@ export type ChartAnalysis = {
   rhythm: {onsetCount: number; windows: RhythmWindowView[]};
   input: {touchCount: number; touchTapCount: number; touchHoldCount: number; locks: LockWindowView[]};
   versions: {
-    algorithm: string; scale: string; star: string; rhythm: string; input: string; radar: string;
+    algorithm: string; chartRelative: string; scale: string; star: string; rhythm: string; input: string; radar: string;
   };
 };
 
@@ -184,7 +187,8 @@ export function analyzeChart(text: string, difficulty: Difficulty): ChartAnalysi
   const starScore = support(star.raw, scale.star);
   const fused = complexityRadar(baseline, starScore, supports);
   const scores = Object.fromEntries(AXIS_ORDER.map(axis => [axis, Math.round(fused[axis]) / 10])) as Record<AxisName, number>;
-  const chartRelativeScores = chartRelativeRadar(fused);
+  const chartRelative = chartRelativeBurden(chart, {star, rhythm, input});
+  const chartRelativeScores = chartRelative.scores;
 
   const feature = (key: string) => Number(base.features[key] ?? 0);
   const KB = feature('axis_keyboard_burst'), KS = feature('axis_keyboard_stamina'), KT = feature('axis_keyboard_technique');
@@ -376,6 +380,7 @@ export function analyzeChart(text: string, difficulty: Difficulty): ChartAnalysi
     title: chart.title,
     scores,
     chartRelativeScores,
+    chartRelative,
     axes,
     stats: {
       notes: stat.live.length, taps: stat.taps, breaks: stat.breaks, holds: stat.holds,
@@ -390,7 +395,7 @@ export function analyzeChart(text: string, difficulty: Difficulty): ChartAnalysi
       {label: 'SB 星星爆发', value: SB}, {label: 'SS 星星体力', value: SS}, {label: 'ST 星星技巧', value: ST},
     ],
     star: {
-      trajectories: new Set(star.windows.flatMap(window => window.slideIds)).size,
+      trajectories: star.actions.length,
       components: {...star.components!},
       occupancy: {
         movingSeconds: star.occupancy!.movingDurationMs / 1000,
@@ -404,7 +409,7 @@ export function analyzeChart(text: string, difficulty: Difficulty): ChartAnalysi
       touchHoldCount: input.touchHoldCount, locks,
     },
     versions: {
-      algorithm: ALGORITHM_VERSION, scale: SCALE_VERSION,
+      algorithm: ALGORITHM_VERSION, chartRelative: CHART_RELATIVE_VERSION, scale: SCALE_VERSION,
       star: star.schemaVersion, rhythm: rhythm.version,
       input: input.version, radar: 'five-axis-complexity-v2',
     },
