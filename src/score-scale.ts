@@ -9,7 +9,7 @@ export const SCORE_SCALE_LABELS: Record<ScoreScale, string> = {
 
 export const SCORE_SCALE_DESCRIPTIONS: Record<ScoreScale, string> = {
   library: '使用全曲库固定标尺，可跨谱面比较。',
-  chart: '沿用曲库五维的锚点、权重、融合和封顶，按显示舍入前的本谱最大融合值等比放大；最强维度为 10.0，用于同谱五维比较。',
+  chart: '沿用曲库锚点和权重，补回被封顶截去的超标量，再按本谱最大原值换算；保留超出曲库上限的强弱差异，最强维度为 10.0。',
 };
 
 export function scoresFor(chart: ChartAnalysis, scale: ScoreScale) {
@@ -18,7 +18,7 @@ export function scoresFor(chart: ChartAnalysis, scale: ScoreScale) {
 
 export function scoreScaleDescription(chart: ChartAnalysis, scale: ScoreScale): string {
   if (scale === 'library') return SCORE_SCALE_DESCRIPTIONS.library;
-  const maximum = Math.max(...chart.axes.map(axis => axis.internal));
-  if (maximum === 0) return '本谱面五维内部融合值均为 0，单曲分数都为 0.0。';
+  const maximum = Math.max(...Object.values(chart.chartRelativeSource));
+  if (maximum === 0) return '本谱面五维单曲原值均为 0，单曲分数都为 0.0。';
   return SCORE_SCALE_DESCRIPTIONS.chart;
 }

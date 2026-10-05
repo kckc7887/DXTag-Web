@@ -18,7 +18,7 @@ import {baseBurden} from '../engine/src/algorithm/base-burden';
 import {starComplexity} from '../engine/src/algorithm/star-complexity';
 import {keyboardRhythmComplexity} from '../engine/src/algorithm/rhythm-complexity';
 import {inputComplexity} from '../engine/src/algorithm/input-complexity';
-import {chartRelativeRadar, complexityRadar, legacyRadar} from '../engine/src/algorithm/five-axis-complexity';
+import {normalizeLegacyRadar, projectLibraryRadar} from '../engine/src/algorithm/five-axis-complexity';
 import {ALGORITHM_VERSION, CHART_RELATIVE_VERSION, DIFFICULTIES, SCALE_VERSION, type Difficulty} from '../engine/src/index';
 import scale from '../engine/src/scale.json';
 import type {Chart, Note} from '../engine/src/simai/types';
@@ -29,9 +29,8 @@ export type {Difficulty};
 export const AXIS_ORDER = ['键盘', '星星', '技巧', '体力', '爆发'] as const;
 export type AxisName = (typeof AXIS_ORDER)[number];
 
-/** Same normalisation helper as DXTag's `src/index.ts`. */
+/** Display clipping for the star-component attribution table. */
 const clamp100 = (value: number) => Math.max(0, Math.min(100, value));
-const support = (raw: number, anchor: number) => Math.round(clamp100(raw / anchor * 100) * 10) / 10;
 const share = (part: number, total: number) => total > 0 ? part / total : 0;
 
 export type Factor = {
@@ -96,6 +95,8 @@ export type ChartAnalysis = {
   slot: number; difficulty: string; title: string;
   scores: Record<AxisName, number>;
   chartRelativeScores: Record<AxisName, number>;
+  chartRelativeSource: Record<AxisName, number>;
+  chartRelativeExcess: Record<AxisName, number>;
   axes: AxisReport[];
   stats: ChartStats;
   features: {label: string; value: number}[];
@@ -169,18 +170,16 @@ export function analyzeChart(text: string, difficulty: Difficulty): ChartAnalysi
   const rhythm = keyboardRhythmComplexity(chart);
   const input = inputComplexity(chart);
 
-  const baseline = legacyRadar(base.features, scale.baseline);
-  const supports = {
-    star_technique: support(star.techniqueRaw, scale.starTechnique),
-    keyboard_rhythm: support(rhythm.raw, scale.rhythm),
-    star_burst: support(star.burstRaw, scale.starBurst),
-    touch_input: support(input.touchRaw, scale.touch),
-    hold_lock: support(input.raw, scale.holdLock),
-  };
-  const starScore = support(star.raw, scale.star);
-  const fused = complexityRadar(baseline, starScore, supports);
+  const projection = projectLibraryRadar(normalizeLegacyRadar(base.features, scale.baseline), star.raw / scale.star * 100, {
+    star_technique: star.techniqueRaw / scale.starTechnique * 100,
+    keyboard_rhythm: rhythm.raw / scale.rhythm * 100,
+    star_burst: star.burstRaw / scale.starBurst * 100,
+    touch_input: input.touchRaw / scale.touch * 100,
+    hold_lock: input.raw / scale.holdLock * 100,
+  });
+  const {baseline, supports, starScore, fused, chartRelativeSource, chartRelativeScores} = projection;
+  const chartRelativeExcess = projection.excess;
   const scores = Object.fromEntries(AXIS_ORDER.map(axis => [axis, Math.round(fused[axis]) / 10])) as Record<AxisName, number>;
-  const chartRelativeScores = chartRelativeRadar(fused);
 
   const feature = (key: string) => Number(base.features[key] ?? 0);
   const KB = feature('axis_keyboard_burst'), KS = feature('axis_keyboard_stamina'), KT = feature('axis_keyboard_technique');
@@ -370,6 +369,8 @@ export function analyzeChart(text: string, difficulty: Difficulty): ChartAnalysi
     title: chart.title,
     scores,
     chartRelativeScores,
+    chartRelativeSource,
+    chartRelativeExcess,
     axes,
     stats: {
       notes: stat.live.length, taps: stat.taps, breaks: stat.breaks, holds: stat.holds,

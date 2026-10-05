@@ -39,11 +39,13 @@ const descriptions = [
 ];
 function axisDetail(a: AxisReport, i: number, chart: ChartAnalysis, scale: ScoreScale) {
   const score = scoresFor(chart, scale)[a.axis];
-  const maximum = Math.max(...chart.axes.map(axis => axis.internal));
+  const maximum = Math.max(...Object.values(chart.chartRelativeSource));
+  const source = chart.chartRelativeSource[a.axis], excess = chart.chartRelativeExcess[a.axis];
+  const restoration = `曲库融合值 ${num(a.internal, 1)} + 加权超标量 ${num(excess, 3)} = 单曲原值 ${num(source, 3)}`;
   const projection = scale === 'chart'
     ? maximum > 0
-      ? `本轴融合值 ${num(a.internal, 1)} / 本谱最大融合值 ${num(maximum, 1)} × 10 → ${score.toFixed(1)}`
-      : '五维内部融合值均为 0 → 0.0'
+      ? `本轴单曲原值 ${num(source, 3)} / 本谱最大原值 ${num(maximum, 3)} × 10 → ${score.toFixed(1)}`
+      : '五维单曲原值均为 0 → 0.0'
     : `曲库融合值 ${num(a.internal, 1)} → 公共显示分数 ${score.toFixed(1)}`;
   return /* HTML */ `<details
     class="axis-detail"
@@ -65,16 +67,17 @@ function axisDetail(a: AxisReport, i: number, chart: ChartAnalysis, scale: Score
         ><code>${esc(a.formula)}</code>
       </div>
       <div class="formula">
-        <span>${scale === 'chart' ? '相对本谱面 · 按本谱最大融合值换算' : '相对全曲库 · 公共分数显示舍入'}</span>
+        <span>${scale === 'chart' ? '相对本谱面 · 保留超标量后换算' : '相对全曲库 · 公共分数显示舍入'}</span>
+        ${scale === 'chart' ? `<code>${esc(restoration)}</code>` : ''}
         <code>${esc(projection)}</code>
       </div>
-      ${scale === 'chart' ? '<p class="precision-note">比例使用曲库内部融合值，已包含封顶和中间舍入；不从已显示的曲库分数反推。一位小数的显示舍入可能产生并列。</p>' : ''}
+      ${scale === 'chart' ? '<p class="precision-note">超标量按各观察量的 max(0, 原值 ÷ 锚点 × 100 − 100) 计算，再乘原融合权重；基础值与星星主轴的权重为 1。超标量与单曲原值不封顶、不提前舍入；下表保留曲库的封顶与融合拆分。</p>' : ''}
       <div
         class="table-scroll"
       >
         <table>
           <caption>
-            逐项归因
+            曲库逐项归因
             <span>原值 → 固定锚点 → 内部归一值；贡献使用 0–100 标尺</span>
           </caption>
           <thead>
@@ -302,8 +305,8 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
     <details class="raw-panel">
       <summary>原始观察量与版本 <span>用于复核与复现</span></summary>
       <dl class="raw-grid">
-        ${o.scoreScale === 'chart' ? a.axes.map(axis => `<div><dt>${esc(axis.axis)} 曲库融合值（0–100）</dt><dd>${num(axis.internal, 1)}</dd></div>`).join('') : a.features.map((f) => `<div><dt>${esc(f.label)}</dt><dd>${num(f.value, 4)}</dd></div>`).join('')}
-        ${o.scoreScale === 'chart' ? `<div><dt>本谱最大融合值（0–100）</dt><dd>${num(Math.max(...a.axes.map(axis => axis.internal)), 1)}</dd></div>` : ''}
+        ${o.scoreScale === 'chart' ? a.axes.map(axis => `<div><dt>${esc(axis.axis)} 单曲原值（含超标量）</dt><dd>${num(a.chartRelativeSource[axis.axis], 3)}</dd></div>`).join('') : a.features.map((f) => `<div><dt>${esc(f.label)}</dt><dd>${num(f.value, 4)}</dd></div>`).join('')}
+        ${o.scoreScale === 'chart' ? `<div><dt>本谱最大单曲原值</dt><dd>${num(Math.max(...Object.values(a.chartRelativeSource)), 3)}</dd></div>` : ''}
       </dl>
       <p class="versions">
         ${Object.entries(a.versions)
