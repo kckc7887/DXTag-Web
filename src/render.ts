@@ -1,7 +1,7 @@
 /** All imported metadata is escaped before HTML rendering. */
 import { AXIS_ORDER, type AxisReport, type ChartAnalysis } from "./analyze";
 import { AXIS_COLOR, createRadar } from "./radar";
-import {SCORE_SCALE_DESCRIPTIONS, SCORE_SCALE_LABELS, scoresFor, type ScoreScale} from './score-scale';
+import {scoreScaleDescription, SCORE_SCALE_LABELS, scoresFor, type ScoreScale} from './score-scale';
 const esc = (v: unknown) =>
   String(v)
     .replace(/&/g, "&amp;")
@@ -219,7 +219,7 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
       <div class="scale-buttons" role="group" aria-label="评分参照">
         ${(['library', 'chart'] as const).map(scale => `<button type="button" data-score-scale="${scale}" aria-pressed="${o.scoreScale === scale}">${SCORE_SCALE_LABELS[scale]}</button>`).join('')}
       </div>
-      <p class="scale-description">${SCORE_SCALE_DESCRIPTIONS[o.scoreScale]}</p>
+      <p class="scale-description">${scoreScaleDescription(a, o.scoreScale)}</p>
     </div>
     <div id="json-fallback" class="json-fallback" hidden>
       <label for="json-output"

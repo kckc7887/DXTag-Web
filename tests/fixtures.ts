@@ -45,9 +45,15 @@ const burstHeavy = maidata({
   ], 24),
 });
 
+const saturated = maidata({
+  title: 'DXTag 回归 · 标尺封顶', artist: 'DXTag Regression', bpm: 600, level: '15',
+  bars: cycle(['{16}1/5,2/6,3/7,4/8,5/1,6/2,7/3,8/4,1/5,2/6,3/7,4/8,5/1,6/2,7/3,8/4'], 32),
+});
+
 export const FIXTURES: readonly RegressionFixture[] = [
   {id: 'balanced', label: '综合谱面', note: '键盘 / 星星 / 技巧均衡', text: balanced},
   {id: 'star', label: '星星密集', note: 'Slide 与扇形为主，星星轴突出', text: starHeavy},
   {id: 'burst', label: '爆发对比', note: '稀疏与十六分爆发交替', text: burstHeavy},
   {id: 'low', label: '低分舍入', note: '验证显示舍入前的相对换算', text: '&inote_5=(120){4}1,A2,2,E'},
+  {id: 'saturated', label: '标尺封顶', note: '最高维度为 10.0 时两组相同', text: saturated},
 ];

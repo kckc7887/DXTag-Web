@@ -44,7 +44,7 @@ const requests=[],timers=[],windowListeners={};
 class Worker {constructor(){worker=this}postMessage(x){requests.push(x)}}
 const ctx={console,URL,TextDecoder,Uint8Array,HTMLDetailsElement:dom.Details,HTMLElement:dom.Element,Worker,document:dom.document,window:{setTimeout(fn){timers.push(fn)},addEventListener(type,fn){(windowListeners[type]??=[]).push(fn)}},matchMedia:()=>({matches:reducedMotion}),CSS:{escape:x=>x},navigator:{clipboard:{async writeText(s){clipboard=s}}}};
 const source=await build({entryPoints:['src/main.ts'],bundle:true,format:'iife',define:{'import.meta.url':'"http://localhost/main.ts"'},write:false});
-const helpers=await build({stdin:{contents:"export * from './src/analyze'; export {FIXTURES} from './tests/fixtures'; export {renderChartView,scoreJson} from './src/render';",resolveDir:process.cwd()},bundle:true,format:'iife',globalName:'qa',write:false});
+const helpers=await build({stdin:{contents:"export * from './src/analyze'; export {FIXTURES} from './tests/fixtures'; export {renderChartView,scoreJson} from './src/render'; export {scoreScaleDescription} from './src/score-scale';",resolveDir:process.cwd()},bundle:true,format:'iife',globalName:'qa',write:false});
 vm.runInNewContext(helpers.outputFiles[0].text,ctx);
 vm.runInNewContext(source.outputFiles[0].text,ctx);
 const $=id=>{const e=dom.document.getElementById(id);assert.ok(e,`Actual HTML must contain #${id}`);return e};
@@ -103,18 +103,33 @@ $('copy-json').click();await settle();
 const relativeExport=JSON.parse(clipboard);
 assert.deepEqual(Object.keys(relativeExport[0]).sort(),['chartRelativeScores','difficulty','title']);
 assert.deepEqual(relativeExport[0].chartRelativeScores,JSON.parse(JSON.stringify(switchChart.chartRelativeScores)));
-for(let i=3;i<ctx.qa.FIXTURES.length;i++){
+for(const i of [ctx.qa.FIXTURES.findIndex(fixture=>fixture.id==='low')]){
  submitFixture(i);const checked=respond().charts[0];
  assert.deepEqual(displayed(),expectedValues(checked.chartRelativeScores),'low chart mode matches the engine');
  const roundedPeak=Math.max(...expectedValues(checked.scores));
  const fromRounded=expectedValues(checked.scores).map(score=>Math.round(score/roundedPeak*100)/10);
  assert.notDeepEqual(displayed(),fromRounded,'low fixture detects using rounded library scores for relative conversion');
 }
+// A capped peak makes the two scales identical, including the actual switch path.
+submitFixture(ctx.qa.FIXTURES.findIndex(fixture=>fixture.id==='saturated'));
+const saturated=respond().charts[0];
+assert.equal(Math.max(...expectedValues(saturated.scores)),10);
+assert.deepEqual(displayed(),expectedValues(saturated.scores));
+assert.ok($('results').querySelector('.scale-description').textContent.includes('比例换算倍数为 1'));
+$('results').querySelector('[data-score-scale="library"]').click();
+const saturatedPoints=$('radar-host').querySelector('.radar-area').getAttribute('points');
+$('results').querySelector('[data-score-scale="chart"]').click();
+assert.equal($('radar-host').querySelector('.radar-area').getAttribute('points'),saturatedPoints);
+assert.equal($('results').querySelector('[data-score-scale="chart"]').getAttribute('aria-pressed'),'true');
+assert.ok($('results').querySelector('.scale-description').textContent.includes('无法恢复封顶前的差异'));
+const nearCap={...saturated,axes:Array.from(saturated.axes,axis=>({...axis,internal:axis.internal*.999}))};
+assert.ok(ctx.qa.scoreScaleDescription(nearCap,'chart').includes('舍入后消失'),'a displayed 10.0 is not proof of an exact cap');
 // Zero scores are a renderer boundary: mine-only inputs are rejected by the engine.
 const zeroScores=Object.fromEntries(ctx.qa.AXIS_ORDER.map(axis=>[axis,0]));
-const zeroChart={...switchChart,scores:zeroScores,chartRelativeScores:zeroScores};
+const zeroChart={...switchChart,scores:zeroScores,chartRelativeScores:zeroScores,axes:Array.from(switchChart.axes,axis=>({...axis,internal:0}))};
 submitFixture(0);worker.onmessage({data:{id:last().id,ok:true,charts:[zeroChart],slots:ctx.qa.listDifficulties(last().text),errors:[]}});
 assert.deepEqual(displayed(),[0,0,0,0,0]);
+assert.ok($('results').querySelector('.scale-description').textContent.includes('都为 0.0'));
 for(const formula of $('results').querySelectorAll('.formula'))assert.ok(formula.textContent.includes('五维融合值均为 0 → 0.0'));
 assert.ok(!/NaN|undefined|Infinity/.test($('results').textContent));
 $('results').querySelector('[data-score-scale="library"]').click();
