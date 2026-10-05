@@ -18,15 +18,13 @@ import {baseBurden} from '../engine/src/algorithm/base-burden';
 import {starComplexity} from '../engine/src/algorithm/star-complexity';
 import {keyboardRhythmComplexity} from '../engine/src/algorithm/rhythm-complexity';
 import {inputComplexity} from '../engine/src/algorithm/input-complexity';
-import {complexityRadar, legacyRadar} from '../engine/src/algorithm/five-axis-complexity';
-import {chartRelativeBurden, type ChartRelativeResult} from '../engine/src/algorithm/chart-relative-burden';
+import {chartRelativeRadar, complexityRadar, legacyRadar} from '../engine/src/algorithm/five-axis-complexity';
 import {ALGORITHM_VERSION, CHART_RELATIVE_VERSION, DIFFICULTIES, SCALE_VERSION, type Difficulty} from '../engine/src/index';
 import scale from '../engine/src/scale.json';
 import type {Chart, Note} from '../engine/src/simai/types';
 
 export {ALGORITHM_VERSION, CHART_RELATIVE_VERSION, SCALE_VERSION, DIFFICULTIES};
 export type {Difficulty};
-export type {ChartRelativeAxis} from '../engine/src/algorithm/chart-relative-burden';
 
 export const AXIS_ORDER = ['键盘', '星星', '技巧', '体力', '爆发'] as const;
 export type AxisName = (typeof AXIS_ORDER)[number];
@@ -98,7 +96,6 @@ export type ChartAnalysis = {
   slot: number; difficulty: string; title: string;
   scores: Record<AxisName, number>;
   chartRelativeScores: Record<AxisName, number>;
-  chartRelative: ChartRelativeResult;
   axes: AxisReport[];
   stats: ChartStats;
   features: {label: string; value: number}[];
@@ -129,7 +126,6 @@ function chain(start: number, steps: {factor: Factor}[]) {
     step.factor.contributed = round1(start === 0 ? 0 : current - next);
     current = next;
   }
-  return 100 - current;
 }
 
 function counts(chart: Chart) {
@@ -184,8 +180,7 @@ export function analyzeChart(text: string, difficulty: Difficulty): ChartAnalysi
   const starScore = support(star.raw, scale.star);
   const fused = complexityRadar(baseline, starScore, supports);
   const scores = Object.fromEntries(AXIS_ORDER.map(axis => [axis, Math.round(fused[axis]) / 10])) as Record<AxisName, number>;
-  const chartRelative = chartRelativeBurden(chart, {star, rhythm, input});
-  const chartRelativeScores = chartRelative.scores;
+  const chartRelativeScores = chartRelativeRadar(fused);
 
   const feature = (key: string) => Number(base.features[key] ?? 0);
   const KB = feature('axis_keyboard_burst'), KS = feature('axis_keyboard_stamina'), KT = feature('axis_keyboard_technique');
@@ -204,7 +199,7 @@ export function analyzeChart(text: string, difficulty: Difficulty): ChartAnalysi
     {factor: factor('Touch 输入', 'Touch 敲击数量、实际起音频率与位移', input.touchRaw, scale.touch, supports.touch_input, 0.65)},
     {factor: factor('锁手负担', 'HOLD 占用期间的外来输入与位移', input.raw, scale.holdLock, supports.hold_lock, 0.35)},
   ];
-  const keyboard = chain(100 - baseline.键盘, keyboardSteps);
+  chain(100 - baseline.键盘, keyboardSteps);
 
   // ---- 星星: the star axis is the normalised continuous star complexity itself.
   const starWeighted = {
@@ -231,17 +226,15 @@ export function analyzeChart(text: string, difficulty: Difficulty): ChartAnalysi
     {factor: factor('输入节奏', '起音间隔不规则度与重复动机、实际起音频率与位移', rhythm.raw, scale.rhythm, supports.keyboard_rhythm, 0.65)},
     {factor: factor('锁手负担', 'HOLD 占用期间的外来输入、位移与其它 HOLD 压力', input.raw, scale.holdLock, supports.hold_lock, 0.65)},
   ];
-  const technique = chain(100 - baseline.技巧, techniqueSteps);
+  chain(100 - baseline.技巧, techniqueSteps);
 
   // ---- 爆发: burst baseline raised by local star complexity rises.
   const burstSteps = [
     {factor: factor('星星突增', '四拍网格上最大的复杂度跃升', star.burstRaw, scale.starBurst, supports.star_burst, 0.65)},
   ];
-  const burst = chain(100 - baseline.爆发, burstSteps);
+  chain(100 - baseline.爆发, burstSteps);
 
-  const internal: Record<AxisName, number> = {
-    键盘: round1(keyboard), 星星: starScore, 技巧: round1(technique), 体力: baseline.体力, 爆发: round1(burst),
-  };
+  const internal = fused;
 
   const starWindows: StarWindowView[] = star.windows
     .filter(window => window.raw > 0)
@@ -377,7 +370,6 @@ export function analyzeChart(text: string, difficulty: Difficulty): ChartAnalysi
     title: chart.title,
     scores,
     chartRelativeScores,
-    chartRelative,
     axes,
     stats: {
       notes: stat.live.length, taps: stat.taps, breaks: stat.breaks, holds: stat.holds,

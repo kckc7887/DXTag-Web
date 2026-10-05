@@ -1,5 +1,5 @@
 /** All imported metadata is escaped before HTML rendering. */
-import { AXIS_ORDER, type AxisReport, type ChartAnalysis, type ChartRelativeAxis } from "./analyze";
+import { AXIS_ORDER, type AxisReport, type ChartAnalysis } from "./analyze";
 import { AXIS_COLOR, createRadar } from "./radar";
 import {scoreScaleDescription, SCORE_SCALE_LABELS, scoresFor, type ScoreScale} from './score-scale';
 const esc = (v: unknown) =>
@@ -37,7 +37,14 @@ const descriptions = [
   "持续输入与滑动占用",
   "短时强度与局部突增",
 ];
-function axisDetail(a: AxisReport, i: number) {
+function axisDetail(a: AxisReport, i: number, chart: ChartAnalysis, scale: ScoreScale) {
+  const score = scoresFor(chart, scale)[a.axis];
+  const maximum = Math.max(...chart.axes.map(axis => axis.internal));
+  const projection = scale === 'chart'
+    ? maximum > 0
+      ? `本轴融合值 ${num(a.internal, 1)} / 本谱最大融合值 ${num(maximum, 1)} × 10 → ${score.toFixed(1)}`
+      : '五维内部融合值均为 0 → 0.0'
+    : `曲库融合值 ${num(a.internal, 1)} → 公共显示分数 ${score.toFixed(1)}`;
   return /* HTML */ `<details
     class="axis-detail"
     data-axis="${esc(a.axis)}"
@@ -48,15 +55,20 @@ function axisDetail(a: AxisReport, i: number) {
       <span class="axis-index">0${i + 1}</span>
       <h3>${a.axis}</h3>
       <span class="detail-hint">${descriptions[i]}</span
-      ><strong>${a.score.toFixed(1)}<small> / 10</small></strong
+      ><strong>${score.toFixed(1)}<small> / 10</small></strong
       ><span class="disclosure">＋</span>
     </summary>
     <div class="axis-body">
       <p class="reason">${esc(a.reason)}</p>
       <div class="formula">
-        <span>计算公式 · 内部标尺 0–100，换算为 0–10 并保留一位小数</span
+        <span>曲库五维计算 · 内部标尺 0–100</span
         ><code>${esc(a.formula)}</code>
       </div>
+      <div class="formula">
+        <span>${scale === 'chart' ? '相对本谱面 · 按本谱最大融合值换算' : '相对全曲库 · 公共分数显示舍入'}</span>
+        <code>${esc(projection)}</code>
+      </div>
+      ${scale === 'chart' ? '<p class="precision-note">比例使用曲库内部融合值，已包含封顶和中间舍入；不从已显示的曲库分数反推。一位小数的显示舍入可能产生并列。</p>' : ''}
       <div
         class="table-scroll"
       >
@@ -84,41 +96,6 @@ function axisDetail(a: AxisReport, i: number) {
       <dl class="evidence">
         ${a.evidence.map((e) => `<div><dt>${esc(e.label)}</dt><dd>${esc(e.value)}</dd></div>`).join("")}
       </dl>
-    </div>
-  </details>`;
-}
-function chartAxisDetail(a: ChartRelativeAxis, i: number, chart: ChartAnalysis) {
-  const maximum = Math.max(...Object.values(chart.chartRelative.rawScores));
-  const isBurst = a.axis === '爆发';
-  const aggregate = isBurst
-    ? `最高负担 ${num(a.peakBeats, 2)} 拍的时间加权均值 ${num(a.peakMean, 4)} = 原始负担 ${num(a.raw, 4)}`
-    : `75% × 均值 ${num(a.mean, 4)} + 25% × P90 ${num(a.p90, 4)} = 原始负担 ${num(a.raw, 4)}`;
-  const reason = isBurst
-    ? '以短时动作强度为主，并计入超出持续水平的增量；按负担最高的四拍汇总，可来自不同段落。连续高密度保留爆发强度，短峰不摊到整谱时长。最强维度映射为 10.0。'
-    : '按本谱面的原始动作计算四拍负担，以整谱均值为主，并考虑覆盖 90% 谱面时长的负担分位。最强维度映射为 10.0。';
-  const projection = maximum > 0
-    ? `原始负担 ${num(a.raw, 4)} / 本谱最强负担 ${num(maximum, 4)} × 10 → ${a.score.toFixed(1)}`
-    : '五维原始负担均为 0 → 0.0';
-  return /* HTML */ `<details class="axis-detail" data-axis="${esc(a.axis)}" id="axis-${i}" style="--axis:${AXIS_COLOR[a.axis]}">
-    <summary><span class="axis-index">0${i + 1}</span><h3>${a.axis}</h3><span class="detail-hint">${descriptions[i]}</span><strong>${a.score.toFixed(1)}<small> / 10</small></strong><span class="disclosure">＋</span></summary>
-    <div class="axis-body">
-      <p class="reason">${reason}</p>
-      <div class="formula"><span>谱内独立计算 · 动作负担 / 秒</span><code>${esc(a.formula)}</code><code>${esc(aggregate)}</code><code>${esc(projection)}</code></div>
-      <div class="table-scroll chart-costs">
-        <table><caption>原始负担来源<span>${isBurst ? '来源表为整谱时间均值；爆发原值使用最高负担四拍' : '时间均值反映组成；P90 根据本维度的完整块负担计算'}</span></caption>
-          <thead><tr><th>来源</th><th>时间均值 / 秒</th><th>成本总和</th></tr></thead>
-          <tbody>${a.sources.map(source => `<tr><td><b>${esc(source.label)}</b></td><td>${num(source.meanRate, 4)}</td><td>${num(source.totalCost, 3)}</td></tr>`).join('')}</tbody>
-        </table>
-      </div>
-      <dl class="evidence">
-        ${isBurst ? `<div><dt>最高负担 ${num(a.peakBeats, 2)} 拍均值</dt><dd>${num(a.peakMean, 4)}</dd></div>` : ''}
-        <div><dt>整谱时间均值${isBurst ? '（参考）' : ''}</dt><dd>${num(a.mean, 4)}</dd></div><div><dt>时间加权 P90${isBurst ? '（参考）' : ''}</dt><dd>${num(a.p90, 4)}</dd></div>
-        <div><dt>原始负担</dt><dd>${num(a.raw, 4)}</dd></div><div><dt>本谱最强负担</dt><dd>${num(maximum, 4)}</dd></div>
-        <div><dt>统计时长</dt><dd>${num(chart.chartRelative.seconds, 2)} 秒（保留谱中休息）</dd></div>
-        <div><dt>原生输入间隔</dt><dd>${num(chart.chartRelative.nativeInputIntervalMs, 2)} 毫秒</dd></div>
-      </dl>
-      <p class="precision-note">原始量按显示精度列出；最终比例使用未舍入的整谱负担。</p>
-      ${a.windows.length ? `<ol class="window-list">${a.windows.map((block, index) => `<li><span class="window-rank">${String(index + 1).padStart(2, '0')}</span><div><b class="window-time">${time(block.startMs)}–${time(block.endMs)}</b><span>${beats(block.startBeat, block.endBeat)}</span><p>当前负担 ${num(block.demand, 3)} · 周围持续水平 ${num(block.sustainedLevel, 3)}</p></div><strong>${num(block.rates[a.axis], 3)}<small>负担 / 秒</small></strong></li>`).join('')}</ol>` : '<p class="no-window">没有该维度的动作负担。</p>'}
     </div>
   </details>`;
 }
@@ -276,7 +253,7 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
         <h2>分数从哪里来</h2>
         <p>每个数值，都可以继续往下追。</p>
       </div>
-      ${o.scoreScale === 'chart' ? a.chartRelative.axes.map((axis, index) => chartAxisDetail(axis, index, a)).join('') : a.axes.map((axis, index) => axisDetail(axis, index)).join('')}
+      ${a.axes.map((axis, index) => axisDetail(axis, index, a, o.scoreScale)).join('')}
     </section>
     <section class="windows">
       <div class="section-heading">
@@ -325,7 +302,8 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
     <details class="raw-panel">
       <summary>原始观察量与版本 <span>用于复核与复现</span></summary>
       <dl class="raw-grid">
-        ${o.scoreScale === 'chart' ? a.chartRelative.axes.map(axis => `<div><dt>${esc(axis.axis)} 原始负担</dt><dd>${num(axis.raw, 4)}</dd></div>`).join('') : a.features.map((f) => `<div><dt>${esc(f.label)}</dt><dd>${num(f.value, 4)}</dd></div>`).join('')}
+        ${o.scoreScale === 'chart' ? a.axes.map(axis => `<div><dt>${esc(axis.axis)} 曲库融合值（0–100）</dt><dd>${num(axis.internal, 1)}</dd></div>`).join('') : a.features.map((f) => `<div><dt>${esc(f.label)}</dt><dd>${num(f.value, 4)}</dd></div>`).join('')}
+        ${o.scoreScale === 'chart' ? `<div><dt>本谱最大融合值（0–100）</dt><dd>${num(Math.max(...a.axes.map(axis => axis.internal)), 1)}</dd></div>` : ''}
       </dl>
       <p class="versions">
         ${Object.entries(a.versions)
