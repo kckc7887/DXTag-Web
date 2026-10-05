@@ -17,7 +17,7 @@
     <header class="masthead">
       <a href="./" class="brand" aria-label="DXTag 首页"><span class="brand-orbit" aria-hidden="true">✦</span><b>DXTag</b><span class="brand-note">CHART ANALYZER</span></a>
       <nav aria-label="项目链接">
-        <a href="https://github.com/kckc7887/DXTag/blob/cc99a103abcafd4a3b4310401deab2cc7bff5049/docs/ALGORITHM.md" target="_blank" rel="noreferrer">算法文档 <span aria-hidden="true">↗</span></a>
+        <a href="https://github.com/kckc7887/DXTag/blob/0ccfb67c87c14015199fcfd1d8f9d01028abb6f4/docs/ALGORITHM.md" target="_blank" rel="noreferrer">算法文档 <span aria-hidden="true">↗</span></a>
         <a href="https://github.com/kckc7887/DXTag-Web" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
       </nav>
     </header>
@@ -43,19 +43,18 @@
               <input type="file" id="file-input" accept=".txt,text/plain" hidden />
               <div class="input-alternatives"><button type="button" class="paste-button" id="paste-toggle" aria-expanded="false" aria-controls="paste-wrap">粘贴文本</button><span class="privacy"><i></i>本地计算 · 文件不上传</span></div>
             </div>
-            <div class="sample-controls"><span class="sample-label">先试试看 <small>合成示例</small></span><div id="sample-list" class="sample-list"></div></div>
           </div>
         </div>
         <div class="paste-wrap" id="paste-wrap" hidden>
           <label for="paste-area">maidata 谱面文本 <span>文件支持 UTF-8 / 带 BOM 的 UTF-16</span></label>
-          <textarea id="paste-area" spellcheck="false" placeholder="&title=谱面名称&#10;&inote_5=(150){16}1,2,3,4,..."></textarea>
+          <textarea id="paste-area" spellcheck="false" placeholder="在这里粘贴完整的 maidata 谱面文本"></textarea>
           <div class="paste-actions"><button type="button" class="primary-button" id="paste-run">分析文本 ↗</button><button type="button" id="paste-clear">清空</button></div>
         </div>
         <p class="status" id="status" role="status" aria-live="polite"></p>
         <div id="errors" role="alert"></div>
       </section>
       <section id="results" class="results" aria-label="谱面分析结果" hidden></section>
-      <div id="empty-state" class="empty-state" hidden><span class="empty-mark" aria-hidden="true">✦</span><h2>下一张，轮到你的谱面。</h2><p>导入 maidata.txt，或从上方选择一张合成示例。</p></div>
+      <div id="empty-state" class="empty-state"><span class="empty-mark" aria-hidden="true">✦</span><h2>放入谱面，查看五维轮廓。</h2><p>导入 maidata.txt，或粘贴完整的谱面文本。</p></div>
       <aside class="reading-note"><span aria-hidden="true">i</span><div><b>分数是线索，体验由你定义</b><p>0.0–10.0 表示算法估计的五维工作量，不是官方定数或通关难度。与玩家实际表现的对应关系尚未验证，不包含判定或最优手序求解；请结合实际游玩体验阅读。</p></div></aside>
     </main>
     <footer><a class="footer-brand" href="#input-panel">DXTag <span>轻量 · 简单 · 开源</span></a><div><a href="https://github.com/kckc7887/DXTag" target="_blank" rel="noreferrer">评分引擎 ↗</a><span id="footer-versions"></span><span>MIT · © 2026 尘言</span></div></footer>

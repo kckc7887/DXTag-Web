@@ -1,8 +1,8 @@
 import { ALGORITHM_VERSION, SCALE_VERSION } from "./analyze";
 import { decodeMaidata } from "./decode";
 import type { ScoreRequest, ScoreResponse, ScoreSuccess } from "./protocol";
-import { cliJson, mountRadar, renderChartView } from "./render";
-import { SAMPLES } from "./samples";
+import { scoreJson, mountRadar, renderChartView } from "./render";
+import type {ScoreScale} from "./score-scale";
 
 const $ = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
@@ -15,7 +15,6 @@ const fileInput = $<HTMLInputElement>("file-input");
 const pasteWrap = $<HTMLElement>("paste-wrap");
 const pasteArea = $<HTMLTextAreaElement>("paste-area");
 const pasteToggle = $<HTMLButtonElement>("paste-toggle");
-const sampleList = $<HTMLElement>("sample-list");
 
 const worker = new Worker(new URL("./worker.ts", import.meta.url), {
   type: "module",
@@ -24,8 +23,7 @@ let requestId = 0;
 let batch: ScoreSuccess | null = null;
 let activeSlot = 0;
 let sourceLabel = "";
-let isDemo = false;
-let initialDemo = true;
+let scoreScale: ScoreScale = 'library';
 
 $<HTMLElement>("footer-versions").textContent =
   `${ALGORITHM_VERSION} · ${SCALE_VERSION}`;
@@ -54,19 +52,15 @@ function beginInput() {
   const id = ++requestId;
   batch = null;
   $("empty-state").hidden = true;
-  sampleList
-    .querySelectorAll("button")
-    .forEach((button) => button.setAttribute("aria-pressed", "false"));
   results.hidden = true;
   results.replaceChildren();
   errors.replaceChildren();
   return id;
 }
 
-function score(text: string, label: string, id = beginInput(), demo = false) {
+function score(text: string, label: string, id = beginInput()) {
   if (id !== requestId) return;
   sourceLabel = label;
-  isDemo = demo;
   const trimmed = text.trim();
   if (!trimmed) {
     setStatus("内容是空的，先放进一份 maidata 吧。", "error");
@@ -100,14 +94,12 @@ worker.onmessage = (event: MessageEvent<ScoreResponse>) => {
     : "";
   setStatus(`已解析 ${response.charts.length} 张普通谱${warned}。`);
   showErrors(response.errors);
-  if (!initialDemo)
-    results.scrollIntoView({
-      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "instant"
-        : "smooth",
-      block: "start",
-    });
-  initialDemo = false;
+  results.scrollIntoView({
+    behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "instant"
+      : "smooth",
+    block: "start",
+  });
 };
 
 worker.onerror = () => {
@@ -144,9 +136,18 @@ function paint() {
     slots: batch.slots,
     activeSlot,
     sourceLabel,
-    isDemo,
+    scoreScale,
   });
-  mountRadar($<HTMLElement>("radar-host"), analysis, jumpToAxis);
+  mountRadar($<HTMLElement>("radar-host"), analysis, scoreScale, jumpToAxis);
+
+  results.querySelectorAll<HTMLButtonElement>('[data-score-scale]').forEach(button => {
+    button.addEventListener('click', () => {
+      scoreScale = button.dataset.scoreScale as ScoreScale;
+      paint();
+      results.querySelector<HTMLButtonElement>(`[data-score-scale="${scoreScale}"]`)
+        ?.focus({preventScroll: true});
+    });
+  });
 
   results
     .querySelectorAll<HTMLButtonElement>(".tab[data-slot]")
@@ -196,10 +197,11 @@ function paint() {
     ?.addEventListener("click", async (event) => {
       const button = event.currentTarget as HTMLButtonElement;
       const exportedBatch = batch;
+      const exportedScale = scoreScale;
       const exportId = requestId;
       if (!exportedBatch) return;
       try {
-        await navigator.clipboard.writeText(cliJson(exportedBatch.charts));
+        await navigator.clipboard.writeText(scoreJson(exportedBatch.charts, exportedScale));
         if (exportId !== requestId || !button.isConnected) return;
         button.textContent = "已复制 ✓";
       } catch {
@@ -208,7 +210,7 @@ function paint() {
         const field =
           results.querySelector<HTMLTextAreaElement>("#json-output");
         if (fallback && field && batch) {
-          field.value = cliJson(batch.charts);
+          field.value = scoreJson(exportedBatch.charts, exportedScale);
           fallback.hidden = false;
           field.focus();
           field.select();
@@ -223,6 +225,7 @@ function paint() {
     .querySelector<HTMLButtonElement>("#reset-view")
     ?.addEventListener("click", () => {
       beginInput();
+      scoreScale = 'library';
       fileInput.value = "";
       pasteArea.value = "";
       pasteWrap.hidden = true;
@@ -253,7 +256,7 @@ async function readFile(file: File) {
   }
 }
 
-// ---- 输入：文件、拖放、粘贴、示例 ----
+// ---- 输入：文件、拖放、粘贴 ----
 dropZone.addEventListener("click", () => fileInput.click());
 // Native button supplies Enter/Space activation without duplicate picker calls.
 fileInput.addEventListener("change", () => {
@@ -296,26 +299,3 @@ $<HTMLButtonElement>("paste-clear").addEventListener("click", () => {
   pasteArea.value = "";
   pasteArea.focus();
 });
-
-for (const sample of SAMPLES) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "sample-button";
-  const title = document.createElement("b");
-  title.textContent = sample.label;
-  const note = document.createElement("span");
-  note.textContent = sample.note;
-  button.append(title, note);
-  button.setAttribute("aria-pressed", "false");
-  button.title = sample.note;
-  button.addEventListener("click", () => {
-    initialDemo = false;
-    score(sample.text, `示例「${sample.label}」`, undefined, true);
-    button.setAttribute("aria-pressed", "true");
-  });
-  sampleList.append(button);
-}
-
-// Show a genuine engine-scored synthetic chart, clearly labeled as a demo.
-score(SAMPLES[0]!.text, "内置合成示例 · 综合谱面", undefined, true);
-sampleList.querySelector("button")?.setAttribute("aria-pressed", "true");

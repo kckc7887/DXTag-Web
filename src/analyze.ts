@@ -1,13 +1,13 @@
 /**
  * Extended analysis layer for the DXTag display page.
  *
- * DXTag's public API returns only `{title, difficulty, scores}`. The page also
+ * DXTag's public API returns global and chart-relative scores. The page also
  * has to explain *why* each axis got its score, so this module calls the very
  * same engine functions in the very same order as `src/index.ts#scoreChart`
  * and keeps every intermediate value instead of discarding it.
  *
- * The five returned scores are identical to the CLI — `npm run verify` asserts
- * that against the engine's own `scoreChart` for every sample chart.
+ * Both score groups match the CLI — `npm run verify` asserts that against the
+ * engine's own `scoreChart` for every regression fixture.
  *
  * Axis fusion reference: engine `docs/ALGORITHM.md` §8.
  *   键盘 = 100 - (100-K0) * (1-0.65H/100) * (1-0.35L/100)
@@ -21,7 +21,7 @@ import {baseBurden} from '../engine/src/algorithm/base-burden';
 import {starComplexity} from '../engine/src/algorithm/star-complexity';
 import {keyboardRhythmComplexity} from '../engine/src/algorithm/rhythm-complexity';
 import {inputComplexity} from '../engine/src/algorithm/input-complexity';
-import {complexityRadar, legacyRadar} from '../engine/src/algorithm/five-axis-complexity';
+import {chartRelativeRadar, complexityRadar, legacyRadar} from '../engine/src/algorithm/five-axis-complexity';
 import {ALGORITHM_VERSION, DIFFICULTIES, SCALE_VERSION, type Difficulty} from '../engine/src/index';
 import scale from '../engine/src/scale.json';
 import type {Chart, Note} from '../engine/src/simai/types';
@@ -98,6 +98,7 @@ export type LockWindowView = {
 export type ChartAnalysis = {
   slot: number; difficulty: string; title: string;
   scores: Record<AxisName, number>;
+  chartRelativeScores: Record<AxisName, number>;
   axes: AxisReport[];
   stats: ChartStats;
   features: {label: string; value: number}[];
@@ -183,6 +184,7 @@ export function analyzeChart(text: string, difficulty: Difficulty): ChartAnalysi
   const starScore = support(star.raw, scale.star);
   const fused = complexityRadar(baseline, starScore, supports);
   const scores = Object.fromEntries(AXIS_ORDER.map(axis => [axis, Math.round(fused[axis]) / 10])) as Record<AxisName, number>;
+  const chartRelativeScores = chartRelativeRadar(fused);
 
   const feature = (key: string) => Number(base.features[key] ?? 0);
   const KB = feature('axis_keyboard_burst'), KS = feature('axis_keyboard_stamina'), KT = feature('axis_keyboard_technique');
@@ -373,6 +375,7 @@ export function analyzeChart(text: string, difficulty: Difficulty): ChartAnalysi
     difficulty: DIFFICULTIES[difficulty],
     title: chart.title,
     scores,
+    chartRelativeScores,
     axes,
     stats: {
       notes: stat.live.length, taps: stat.taps, breaks: stat.breaks, holds: stat.holds,

@@ -1,4 +1,5 @@
 import { AXIS_ORDER, type AxisName, type ChartAnalysis } from "./analyze";
+import {SCORE_SCALE_LABELS, scoresFor, type ScoreScale} from './score-scale';
 export const AXIS_COLOR: Record<AxisName, string> = {
   键盘: "#f34aa7",
   星星: "#20bfdc",
@@ -20,12 +21,14 @@ const polygon = (radius: (i: number) => number) =>
   AXIS_ORDER.map((_, i) => point(i, radius(i)).join(",")).join(" ");
 export function createRadar(
   chart: ChartAnalysis,
+  scale: ScoreScale,
   onSelect?: (axis: AxisName) => void,
 ): SVGSVGElement {
+  const scores = scoresFor(chart, scale);
   const svg = el("svg", {
     viewBox: "0 0 440 440",
     role: onSelect ? "group" : "img",
-    "aria-label": `五维雷达图，满分10：${AXIS_ORDER.map((a) => `${a} ${chart.scores[a].toFixed(1)}`).join("，")}`,
+    "aria-label": `${SCORE_SCALE_LABELS[scale]}五维雷达图，满分10：${AXIS_ORDER.map((a) => `${a} ${scores[a].toFixed(1)}`).join("，")}`,
   }) as SVGSVGElement;
   // Original CSS/SVG treatment: a candy-colored instrument ring, never a filled score area.
   svg.append(
@@ -59,12 +62,12 @@ export function createRadar(
   });
   svg.append(
     el("polygon", {
-      points: polygon((i) => chart.scores[AXIS_ORDER[i]!]! * 11),
+      points: polygon((i) => scores[AXIS_ORDER[i]!]! * 11),
       class: "radar-area",
     }),
   );
   AXIS_ORDER.forEach((axis, i) => {
-    const [x, y] = point(i, chart.scores[axis] * 11);
+    const [x, y] = point(i, scores[axis] * 11);
     svg.append(el("circle", { cx: x!, cy: y!, r: 4.5, class: "radar-dot" }));
     const [lx, ly] = point(i, 155);
     const g = el("g", {
@@ -73,7 +76,7 @@ export function createRadar(
         ? {
             role: "button",
             tabindex: "0",
-            "aria-label": `${axis} ${chart.scores[axis].toFixed(1)}，查看依据`,
+            "aria-label": `${axis} ${scores[axis].toFixed(1)}，查看依据`,
           }
         : {}),
     });
@@ -85,7 +88,7 @@ export function createRadar(
       "text-anchor": "middle",
       class: "radar-value",
     });
-    value.textContent = chart.scores[axis].toFixed(1);
+    value.textContent = scores[axis].toFixed(1);
     g.append(
       el("rect", {
         x: lx! - 30,

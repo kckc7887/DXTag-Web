@@ -1,6 +1,7 @@
 /** All imported metadata is escaped before HTML rendering. */
 import { AXIS_ORDER, type AxisReport, type ChartAnalysis } from "./analyze";
 import { AXIS_COLOR, createRadar } from "./radar";
+import {SCORE_SCALE_DESCRIPTIONS, SCORE_SCALE_LABELS, scoresFor, type ScoreScale} from './score-scale';
 const esc = (v: unknown) =>
   String(v)
     .replace(/&/g, "&amp;")
@@ -15,12 +16,12 @@ const time = (ms: number) => {
   return `${m}:${(s - m * 60).toFixed(1).padStart(4, "0")}`;
 };
 const beats = (a: number, b: number) => `第 ${num(a, 1)}–${num(b, 1)} 拍`;
-export function cliJson(charts: readonly ChartAnalysis[]) {
+export function scoreJson(charts: readonly ChartAnalysis[], scale: ScoreScale) {
   return JSON.stringify(
     charts.map((c) => ({
       title: c.title,
       difficulty: c.difficulty,
-      scores: c.scores,
+      ...(scale === 'chart' ? {chartRelativeScores: c.chartRelativeScores} : {scores: c.scores}),
     })),
     null,
     2,
@@ -36,7 +37,11 @@ const descriptions = [
   "持续输入与滑动占用",
   "短时密度与局部突增",
 ];
-function axisDetail(a: AxisReport, i: number) {
+function axisDetail(a: AxisReport, i: number, scale: ScoreScale, score: number, chartIsZero: boolean) {
+  const relative = scale === 'chart';
+  const relativeFormula = chartIsZero
+    ? '五维融合值均为 0 → 0.0'
+    : `未舍入的本维度融合值 ÷ 五维最大融合值 × 10 → ${score.toFixed(1)}`;
   return /* HTML */ `<details
     class="axis-detail"
     data-axis="${esc(a.axis)}"
@@ -47,16 +52,16 @@ function axisDetail(a: AxisReport, i: number) {
       <span class="axis-index">0${i + 1}</span>
       <h3>${a.axis}</h3>
       <span class="detail-hint">${descriptions[i]}</span
-      ><strong>${a.score.toFixed(1)}<small> / 10</small></strong
+      ><strong>${score.toFixed(1)}<small> / 10</small></strong
       ><span class="disclosure" aria-hidden="true">＋</span>
     </summary>
     <div class="axis-body">
-      <p class="reason">${esc(a.reason)}</p>
+      <p class="reason">${relative ? (chartIsZero ? '本谱面五维负担均为零，自身相对分数也全部为 0.0。' : '以本谱面五个维度的最大融合值为参照，显示舍入前计算比例；最高维度为 10.0。') : esc(a.reason)}</p>
       <div class="formula">
-        <span>计算公式 · 内部标尺 0–100，换算为 0–10 并保留一位小数</span
-        ><code>${esc(a.formula)}</code>
+        <span>${relative ? '本谱面五维比较 · 最后保留一位小数' : '计算公式 · 内部标尺 0–100，换算为 0–10 并保留一位小数'}</span
+        ><code>${esc(relative ? relativeFormula : a.formula)}</code>
       </div>
-      <div
+      ${relative ? '' : `<div
         class="table-scroll"
         role="region"
         tabindex="0"
@@ -82,7 +87,7 @@ function axisDetail(a: AxisReport, i: number) {
           </tbody>
         </table>
       </div>
-      ${a.baselineParts.length ? `<div class="baseline-parts">${a.baselineParts.map((p) => `<span>${esc(p.label)} <b>${num(p.value)}</b> · ${(p.share * 100).toFixed(1)}%</span>`).join("")}</div>` : ""}${a.axis === "星星" ? `<p class="precision-note">星星原值 ${num(a.baselineRaw, 3)} ÷ 锚点 ${num(a.baselineAnchor)}；各分量独立舍入，整体归一后还会封顶，因此分量显示值之和可能与最终结果略有差异；以引擎汇总值为准。</p>` : ""}
+      ${a.baselineParts.length ? `<div class="baseline-parts">${a.baselineParts.map((p) => `<span>${esc(p.label)} <b>${num(p.value)}</b> · ${(p.share * 100).toFixed(1)}%</span>`).join("")}</div>` : ""}${a.axis === "星星" ? `<p class="precision-note">星星原值 ${num(a.baselineRaw, 3)} ÷ 锚点 ${num(a.baselineAnchor)}；各分量独立舍入，整体归一后还会封顶，因此分量显示值之和可能与最终结果略有差异；以引擎汇总值为准。</p>` : ""}`}
       <dl class="evidence">
         ${a.evidence.map((e) => `<div><dt>${esc(e.label)}</dt><dd>${esc(e.value)}</dd></div>`).join("")}
       </dl>
@@ -176,9 +181,11 @@ export type ChartViewOptions = {
   slots: readonly { slot: number; name: string }[];
   activeSlot: number;
   sourceLabel?: string;
-  isDemo?: boolean;
+  scoreScale: ScoreScale;
 };
 export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
+  const scores = scoresFor(a, o.scoreScale);
+  const chartIsZero = AXIS_ORDER.every(axis => a.chartRelativeScores[axis] === 0);
   const metadata = [
     a.stats.artist,
     a.stats.designer ? `谱师 ${a.stats.designer}` : "",
@@ -190,7 +197,7 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
       <div>
         <p class="report-label">
           <span class="source-label"
-            >${o.isDemo ? "合成示例 / DEMO" : "谱面报告 / ANALYSIS"}</span
+            >谱面报告 / ANALYSIS</span
           ><span>${esc(o.sourceLabel ?? "本地解析")}</span>
         </p>
         <h2>${esc(a.title || "未命名谱面")}</h2>
@@ -208,9 +215,15 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
       </div>
       <span class="scale-note">独立维度 · 0.0–10.0</span>
     </div>
+    <div class="scale-picker">
+      <div class="scale-buttons" role="group" aria-label="评分参照">
+        ${(['library', 'chart'] as const).map(scale => `<button type="button" data-score-scale="${scale}" aria-pressed="${o.scoreScale === scale}">${SCORE_SCALE_LABELS[scale]}</button>`).join('')}
+      </div>
+      <p class="scale-description">${SCORE_SCALE_DESCRIPTIONS[o.scoreScale]}</p>
+    </div>
     <div id="json-fallback" class="json-fallback" hidden>
       <label for="json-output"
-        >自动复制不可用，请手动复制全部已解析难度的 JSON</label
+        >自动复制不可用，请手动复制全部已解析难度的${SCORE_SCALE_LABELS[o.scoreScale]} JSON</label
       ><textarea id="json-output" readonly spellcheck="false"></textarea>
     </div>
     <section class="profile" aria-label="五维评分">
@@ -219,14 +232,14 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
           <span>YOUR CHART, IN FIVE AXES</span><span>DX / 05</span>
         </div>
         <div id="radar-host"></div>
-        <p class="radar-caption">五维负担轮廓 <span>网格外沿 = 10.0</span></p>
+        <p class="radar-caption">${SCORE_SCALE_LABELS[o.scoreScale]} <span>网格外沿 = 10.0</span></p>
       </div>
       <div class="score-panel">
         <div class="score-heading">
           <h3>这张谱，难在哪里？</h3>
           <span>点选维度，展开依据 ↗</span>
         </div>
-        ${AXIS_ORDER.map((axis, i) => `<button class="score-row" data-jump="${i}" style="--axis:${AXIS_COLOR[axis]}" type="button" aria-label="${axis} ${a.scores[axis].toFixed(1)}，查看评分依据"><span class="score-index">0${i + 1}</span><span class="score-info"><b>${axis}</b><small>${descriptions[i]}</small><span class="score-track"><i style="width:${a.scores[axis] * 10}%"></i></span></span><span class="score-value">${a.scores[axis].toFixed(1)}</span></button>`).join("")}
+        ${AXIS_ORDER.map((axis, i) => `<button class="score-row" data-jump="${i}" style="--axis:${AXIS_COLOR[axis]}" type="button" aria-label="${axis} ${scores[axis].toFixed(1)}，查看评分依据"><span class="score-index">0${i + 1}</span><span class="score-info"><b>${axis}</b><small>${descriptions[i]}</small><span class="score-track"><i style="width:${scores[axis] * 10}%"></i></span></span><span class="score-value">${scores[axis].toFixed(1)}</span></button>`).join("")}
         <p class="score-footnote">各维度独立描述谱面特征，不合并为总分。</p>
       </div>
     </section>
@@ -237,7 +250,7 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
         <h2>分数从哪里来</h2>
         <p>每个数值，都可以继续往下追。</p>
       </div>
-      ${a.axes.map(axisDetail).join("")}
+      ${a.axes.map((axis, index) => axisDetail(axis, index, o.scoreScale, scores[axis.axis], chartIsZero)).join("")}
     </section>
     <section class="windows">
       <div class="section-heading">
@@ -298,7 +311,8 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
 export function mountRadar(
   host: HTMLElement,
   a: ChartAnalysis,
+  scale: ScoreScale,
   _onSelect: (axis: string) => void,
 ) {
-  host.replaceChildren(createRadar(a, (axis) => _onSelect(axis)));
+  host.replaceChildren(createRadar(a, scale, (axis) => _onSelect(axis)));
 }

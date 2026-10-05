@@ -2,20 +2,23 @@
  *  Bundled by `scripts/verify.mjs` and executed in Node. */
 import {scoreChart} from '../engine/src/index';
 import {AXIS_ORDER, analyzeChart, listDifficulties} from './analyze';
-import {SAMPLES} from './samples';
+import {FIXTURES} from '../tests/fixtures';
 
 const problems: string[] = [];
 const rows: string[] = [];
 let checked = 0;
 
-for (const sample of SAMPLES) {
+for (const sample of FIXTURES) {
   for (const {slot, name} of listDifficulties(sample.text)) {
-    const expected = scoreChart(sample.text, slot).scores;
+    const expected = scoreChart(sample.text, slot);
     const analysis = analyzeChart(sample.text, slot);
     checked++;
     for (const axis of AXIS_ORDER) {
-      if (analysis.scores[axis] !== expected[axis]) {
-        problems.push(`${sample.id}/${name} ${axis}: 页面 ${analysis.scores[axis]} ≠ 引擎 ${expected[axis]}`);
+      if (analysis.scores[axis] !== expected.scores[axis]) {
+        problems.push(`${sample.id}/${name} ${axis}: 页面 ${analysis.scores[axis]} ≠ 引擎 ${expected.scores[axis]}`);
+      }
+      if (analysis.chartRelativeScores[axis] !== expected.chartRelativeScores[axis]) {
+        problems.push(`${sample.id}/${name} ${axis}: 本谱面相对分数与引擎不一致`);
       }
       const report = analysis.axes.find(entry => entry.axis === axis)!;
       if (Math.round(report.internal) / 10 !== analysis.scores[axis]) {
@@ -57,4 +60,4 @@ if (problems.length) {
   for (const problem of problems) console.error('  - ' + problem);
   throw new Error('引擎一致性校验失败');
 }
-console.log(`\n✓ 五维分数、内部融合值与归因复算全部与引擎一致（${checked} 张谱面）`);
+console.log(`\n✓ 两组五维分数、内部融合值与归因复算全部与引擎一致（${checked} 张谱面）`);
