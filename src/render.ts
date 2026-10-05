@@ -35,7 +35,7 @@ const descriptions = [
   "滑动路径与并发协调",
   "手序、节奏与锁手",
   "持续输入与滑动占用",
-  "短时密度与局部突增",
+  "短时强度与局部突增",
 ];
 function axisDetail(a: AxisReport, i: number) {
   return /* HTML */ `<details
@@ -89,23 +89,30 @@ function axisDetail(a: AxisReport, i: number) {
 }
 function chartAxisDetail(a: ChartRelativeAxis, i: number, chart: ChartAnalysis) {
   const maximum = Math.max(...Object.values(chart.chartRelative.rawScores));
-  const aggregate = `75% × 均值 ${num(a.mean, 4)} + 25% × P90 ${num(a.p90, 4)} = 原始负担 ${num(a.raw, 4)}`;
+  const isBurst = a.axis === '爆发';
+  const aggregate = isBurst
+    ? `最高负担 ${num(a.peakBeats, 2)} 拍的时间加权均值 ${num(a.peakMean, 4)} = 原始负担 ${num(a.raw, 4)}`
+    : `75% × 均值 ${num(a.mean, 4)} + 25% × P90 ${num(a.p90, 4)} = 原始负担 ${num(a.raw, 4)}`;
+  const reason = isBurst
+    ? '以短时动作强度为主，并计入超出持续水平的增量；按负担最高的四拍汇总，可来自不同段落。连续高密度保留爆发强度，短峰不摊到整谱时长。最强维度映射为 10.0。'
+    : '按本谱面的原始动作计算四拍负担，以整谱均值为主，并考虑覆盖 90% 谱面时长的负担分位。最强维度映射为 10.0。';
   const projection = maximum > 0
     ? `原始负担 ${num(a.raw, 4)} / 本谱最强负担 ${num(maximum, 4)} × 10 → ${a.score.toFixed(1)}`
     : '五维原始负担均为 0 → 0.0';
   return /* HTML */ `<details class="axis-detail" data-axis="${esc(a.axis)}" id="axis-${i}" style="--axis:${AXIS_COLOR[a.axis]}">
     <summary><span class="axis-index">0${i + 1}</span><h3>${a.axis}</h3><span class="detail-hint">${descriptions[i]}</span><strong>${a.score.toFixed(1)}<small> / 10</small></strong><span class="disclosure">＋</span></summary>
     <div class="axis-body">
-      <p class="reason">按本谱面的原始动作计算四拍负担，以整谱均值为主，并考虑覆盖 90% 谱面时长的负担分位。最强维度映射为 10.0。</p>
+      <p class="reason">${reason}</p>
       <div class="formula"><span>谱内独立计算 · 动作负担 / 秒</span><code>${esc(a.formula)}</code><code>${esc(aggregate)}</code><code>${esc(projection)}</code></div>
       <div class="table-scroll chart-costs">
-        <table><caption>原始负担来源<span>时间均值反映组成；P90 根据本维度的完整块负担计算</span></caption>
+        <table><caption>原始负担来源<span>${isBurst ? '来源表为整谱时间均值；爆发原值使用最高负担四拍' : '时间均值反映组成；P90 根据本维度的完整块负担计算'}</span></caption>
           <thead><tr><th>来源</th><th>时间均值 / 秒</th><th>成本总和</th></tr></thead>
           <tbody>${a.sources.map(source => `<tr><td><b>${esc(source.label)}</b></td><td>${num(source.meanRate, 4)}</td><td>${num(source.totalCost, 3)}</td></tr>`).join('')}</tbody>
         </table>
       </div>
       <dl class="evidence">
-        <div><dt>整谱时间均值</dt><dd>${num(a.mean, 4)}</dd></div><div><dt>时间加权 P90</dt><dd>${num(a.p90, 4)}</dd></div>
+        ${isBurst ? `<div><dt>最高负担 ${num(a.peakBeats, 2)} 拍均值</dt><dd>${num(a.peakMean, 4)}</dd></div>` : ''}
+        <div><dt>整谱时间均值${isBurst ? '（参考）' : ''}</dt><dd>${num(a.mean, 4)}</dd></div><div><dt>时间加权 P90${isBurst ? '（参考）' : ''}</dt><dd>${num(a.p90, 4)}</dd></div>
         <div><dt>原始负担</dt><dd>${num(a.raw, 4)}</dd></div><div><dt>本谱最强负担</dt><dd>${num(maximum, 4)}</dd></div>
         <div><dt>统计时长</dt><dd>${num(chart.chartRelative.seconds, 2)} 秒（保留谱中休息）</dd></div>
         <div><dt>原生输入间隔</dt><dd>${num(chart.chartRelative.nativeInputIntervalMs, 2)} 毫秒</dd></div>

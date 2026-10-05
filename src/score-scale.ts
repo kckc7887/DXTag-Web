@@ -9,7 +9,7 @@ export const SCORE_SCALE_LABELS: Record<ScoreScale, string> = {
 
 export const SCORE_SCALE_DESCRIPTIONS: Record<ScoreScale, string> = {
   library: '使用全曲库固定标尺，可跨谱面比较。',
-  chart: '直接分析本谱面的输入、滑动与占手，以整谱负担为主；最强维度为 10.0，用于同谱五维比较。',
+  chart: '直接分析本谱面的输入、滑动与占手；键盘、星星、技巧和体力看整体负担，爆发看最高负担四拍。最强维度为 10.0，用于同谱五维比较。',
 };
 
 export function scoresFor(chart: ChartAnalysis, scale: ScoreScale) {
