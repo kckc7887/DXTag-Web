@@ -1,5 +1,4 @@
 import { AXIS_ORDER, type AxisName, type ChartAnalysis } from "./analyze";
-import {scoresFor, type ScoreScale} from './score-scale';
 export const AXIS_COLOR: Record<AxisName, string> = {
   键盘: "#f34aa7",
   星星: "#20bfdc",
@@ -21,10 +20,9 @@ const polygon = (radius: (i: number) => number) =>
   AXIS_ORDER.map((_, i) => point(i, radius(i)).join(",")).join(" ");
 export function createRadar(
   chart: ChartAnalysis,
-  scale: ScoreScale,
   onSelect?: (axis: AxisName) => void,
 ): SVGSVGElement {
-  const scores = scoresFor(chart, scale);
+  const scores = chart.scores;
   const svg = el("svg", {
     viewBox: "0 0 440 440",
   }) as SVGSVGElement;

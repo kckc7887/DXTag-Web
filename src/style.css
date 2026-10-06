@@ -111,11 +111,6 @@ textarea { width: 100%; resize: vertical; min-height: 180px; border: 1px solid #
 .tab { font-family: var(--mono); min-height: 36px; font-size: 12px; padding: 8px 16px; border: 1px solid #cedde6; letter-spacing: .2px; }
 .tab.is-active { background: #8650c4; color: #fff; border-color: #8650c4; box-shadow: 0 3px 0 #e0d0f1; }
 .scale-note { margin-left: auto; white-space: nowrap; }
-.scale-picker { display: flex; align-items: center; flex-wrap: wrap; gap: 14px 20px; margin-bottom: 22px; }
-.scale-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
-.scale-buttons button { min-height: 40px; padding: 8px 16px; font-size: 12px; }
-.scale-buttons button.is-active { background: #086f87; color: #fff; border-color: #086f87; box-shadow: 0 3px 0 #bbe9ef; }
-.scale-description { flex: 1 1 260px; font-size: 12px; line-height: 1.8; color: var(--muted); }
 .profile { display: grid; grid-template-columns: 1fr 1.1fr; gap: 58px; align-items: center; margin: 12px 0 28px; }
 .radar-panel { min-width: 0; position: relative; padding: 8px 0; }
 .radar-topline { display: flex; justify-content: space-between; font-family: var(--mono); color: #536e81; font-size: 10px; letter-spacing: 1.6px; padding: 0 15px; }

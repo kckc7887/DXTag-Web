@@ -1,8 +1,7 @@
-import { ALGORITHM_VERSION, CHART_RELATIVE_VERSION, SCALE_VERSION } from "./analyze";
+import { ALGORITHM_VERSION, SCALE_VERSION } from "./analyze";
 import { decodeMaidata } from "./decode";
 import type { ScoreRequest, ScoreResponse, ScoreSuccess } from "./protocol";
 import { scoreJson, mountRadar, renderChartView } from "./render";
-import type {ScoreScale} from "./score-scale";
 
 const $ = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
@@ -23,10 +22,9 @@ let requestId = 0;
 let batch: ScoreSuccess | null = null;
 let activeSlot = 0;
 let sourceLabel = "";
-let scoreScale: ScoreScale = 'library';
 
 $<HTMLElement>("footer-versions").textContent =
-  `${ALGORITHM_VERSION} · ${SCALE_VERSION} · ${CHART_RELATIVE_VERSION}`;
+  `${ALGORITHM_VERSION} · ${SCALE_VERSION}`;
 
 function setStatus(message: string, kind: "" | "error" | "busy" = "") {
   status.textContent = message;
@@ -131,16 +129,8 @@ function paint() {
     slots: batch.slots,
     activeSlot,
     sourceLabel,
-    scoreScale,
   });
-  mountRadar($<HTMLElement>("radar-host"), analysis, scoreScale, jumpToAxis);
-
-  results.querySelectorAll<HTMLButtonElement>('[data-score-scale]').forEach(button => {
-    button.addEventListener('click', () => {
-      scoreScale = button.dataset.scoreScale as ScoreScale;
-      paint();
-    });
-  });
+  mountRadar($<HTMLElement>("radar-host"), analysis, jumpToAxis);
 
   results
     .querySelectorAll<HTMLButtonElement>(".tab[data-slot]")
@@ -182,11 +172,10 @@ function paint() {
     ?.addEventListener("click", async (event) => {
       const button = event.currentTarget as HTMLButtonElement;
       const exportedBatch = batch;
-      const exportedScale = scoreScale;
       const exportId = requestId;
       if (!exportedBatch) return;
       try {
-        await navigator.clipboard.writeText(scoreJson(exportedBatch.charts, exportedScale));
+        await navigator.clipboard.writeText(scoreJson(exportedBatch.charts));
         if (exportId !== requestId || !button.isConnected) return;
         button.textContent = "已复制 ✓";
       } catch {
@@ -195,7 +184,7 @@ function paint() {
         const field =
           results.querySelector<HTMLTextAreaElement>("#json-output");
         if (fallback && field && batch) {
-          field.value = scoreJson(exportedBatch.charts, exportedScale);
+          field.value = scoreJson(exportedBatch.charts);
           fallback.hidden = false;
           field.select();
         }
@@ -209,7 +198,6 @@ function paint() {
     .querySelector<HTMLButtonElement>("#reset-view")
     ?.addEventListener("click", () => {
       beginInput();
-      scoreScale = 'library';
       fileInput.value = "";
       pasteArea.value = "";
       pasteWrap.hidden = true;

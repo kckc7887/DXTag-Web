@@ -1,7 +1,6 @@
 /** All imported metadata is escaped before HTML rendering. */
 import { AXIS_ORDER, type AxisReport, type ChartAnalysis } from "./analyze";
 import { AXIS_COLOR, createRadar } from "./radar";
-import {scoreScaleDescription, SCORE_SCALE_LABELS, scoresFor, type ScoreScale} from './score-scale';
 const esc = (v: unknown) =>
   String(v)
     .replace(/&/g, "&amp;")
@@ -16,12 +15,12 @@ const time = (ms: number) => {
   return `${m}:${(s - m * 60).toFixed(1).padStart(4, "0")}`;
 };
 const beats = (a: number, b: number) => `第 ${num(a, 1)}–${num(b, 1)} 拍`;
-export function scoreJson(charts: readonly ChartAnalysis[], scale: ScoreScale) {
+export function scoreJson(charts: readonly ChartAnalysis[]) {
   return JSON.stringify(
     charts.map((c) => ({
       title: c.title,
       difficulty: c.difficulty,
-      ...(scale === 'chart' ? {chartRelativeScores: c.chartRelativeScores} : {scores: c.scores}),
+      scores: c.scores,
     })),
     null,
     2,
@@ -37,16 +36,9 @@ const descriptions = [
   "持续输入与滑动占用",
   "短时强度与局部突增",
 ];
-function axisDetail(a: AxisReport, i: number, chart: ChartAnalysis, scale: ScoreScale) {
-  const score = scoresFor(chart, scale)[a.axis];
-  const maximum = Math.max(...Object.values(chart.chartRelativeSource));
-  const source = chart.chartRelativeSource[a.axis], excess = chart.chartRelativeExcess[a.axis];
-  const restoration = `曲库融合值 ${num(a.internal, 1)} + 加权超标量 ${num(excess, 3)} = 单曲原值 ${num(source, 3)}`;
-  const projection = scale === 'chart'
-    ? maximum > 0
-      ? `本轴单曲原值 ${num(source, 3)} / 本谱最大原值 ${num(maximum, 3)} × 10 → ${score.toFixed(1)}`
-      : '五维单曲原值均为 0 → 0.0'
-    : `曲库融合值 ${num(a.internal, 1)} → 公共显示分数 ${score.toFixed(1)}`;
+function axisDetail(a: AxisReport, i: number) {
+  const score = a.score;
+  const projection = `曲库融合值 ${num(a.internal, 1)} → 公共显示分数 ${score.toFixed(1)}`;
   return /* HTML */ `<details
     class="axis-detail"
     data-axis="${esc(a.axis)}"
@@ -67,11 +59,9 @@ function axisDetail(a: AxisReport, i: number, chart: ChartAnalysis, scale: Score
         ><code>${esc(a.formula)}</code>
       </div>
       <div class="formula">
-        <span>${scale === 'chart' ? '相对本谱面 · 保留超标量后换算' : '相对全曲库 · 公共分数显示舍入'}</span>
-        ${scale === 'chart' ? `<code>${esc(restoration)}</code>` : ''}
+        <span>全曲库标尺 · 公共分数显示舍入</span>
         <code>${esc(projection)}</code>
       </div>
-      ${scale === 'chart' ? '<p class="precision-note">超标量按各观察量的 max(0, 原值 ÷ 锚点 × 100 − 100) 计算，再乘原融合权重；基础值与星星主轴的权重为 1。超标量与单曲原值不封顶、不提前舍入；下表保留曲库的封顶与融合拆分。</p>' : ''}
       <div
         class="table-scroll"
       >
@@ -188,10 +178,9 @@ export type ChartViewOptions = {
   slots: readonly { slot: number; name: string }[];
   activeSlot: number;
   sourceLabel?: string;
-  scoreScale: ScoreScale;
 };
 export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
-  const scores = scoresFor(a, o.scoreScale);
+  const scores = a.scores;
   const metadata = [
     a.stats.artist,
     a.stats.designer ? `谱师 ${a.stats.designer}` : "",
@@ -221,15 +210,9 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
       </div>
       <span class="scale-note">独立维度 · 0.0–10.0</span>
     </div>
-    <div class="scale-picker">
-      <div class="scale-buttons">
-        ${(['library', 'chart'] as const).map(scale => `<button type="button" class="${o.scoreScale === scale ? 'is-active' : ''}" data-score-scale="${scale}">${SCORE_SCALE_LABELS[scale]}</button>`).join('')}
-      </div>
-      <p class="scale-description">${scoreScaleDescription(a, o.scoreScale)}</p>
-    </div>
     <div id="json-fallback" class="json-fallback" hidden>
       <label for="json-output"
-        >自动复制不可用，请手动复制全部已解析难度的${SCORE_SCALE_LABELS[o.scoreScale]} JSON</label
+        >自动复制不可用，请手动复制全部已解析难度的 JSON</label
       ><textarea id="json-output" readonly spellcheck="false"></textarea>
     </div>
     <section class="profile">
@@ -238,7 +221,7 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
           <span>YOUR CHART, IN FIVE AXES</span><span>DX / 05</span>
         </div>
         <div id="radar-host"></div>
-        <p class="radar-caption">${SCORE_SCALE_LABELS[o.scoreScale]} <span>网格外沿 = 10.0</span></p>
+        <p class="radar-caption">全曲库固定标尺 <span>网格外沿 = 10.0</span></p>
       </div>
       <div class="score-panel">
         <div class="score-heading">
@@ -256,7 +239,7 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
         <h2>分数从哪里来</h2>
         <p>每个数值，都可以继续往下追。</p>
       </div>
-      ${a.axes.map((axis, index) => axisDetail(axis, index, a, o.scoreScale)).join('')}
+      ${a.axes.map((axis, index) => axisDetail(axis, index)).join('')}
     </section>
     <section class="windows">
       <div class="section-heading">
@@ -305,8 +288,7 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
     <details class="raw-panel">
       <summary>原始观察量与版本 <span>用于复核与复现</span></summary>
       <dl class="raw-grid">
-        ${o.scoreScale === 'chart' ? a.axes.map(axis => `<div><dt>${esc(axis.axis)} 单曲原值（含超标量）</dt><dd>${num(a.chartRelativeSource[axis.axis], 3)}</dd></div>`).join('') : a.features.map((f) => `<div><dt>${esc(f.label)}</dt><dd>${num(f.value, 4)}</dd></div>`).join('')}
-        ${o.scoreScale === 'chart' ? `<div><dt>本谱最大单曲原值</dt><dd>${num(Math.max(...Object.values(a.chartRelativeSource)), 3)}</dd></div>` : ''}
+        ${a.features.map((f) => `<div><dt>${esc(f.label)}</dt><dd>${num(f.value, 4)}</dd></div>`).join('')}
       </dl>
       <p class="versions">
         ${Object.entries(a.versions)
@@ -318,8 +300,7 @@ export function renderChartView(a: ChartAnalysis, o: ChartViewOptions) {
 export function mountRadar(
   host: HTMLElement,
   a: ChartAnalysis,
-  scale: ScoreScale,
   _onSelect: (axis: string) => void,
 ) {
-  host.replaceChildren(createRadar(a, scale, (axis) => _onSelect(axis)));
+  host.replaceChildren(createRadar(a, (axis) => _onSelect(axis)));
 }
